@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Take Exam - {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="container exam-container">
+    <h1 class="mb-4">{{ exam.title }}</h1>
+    <div class="exam-info mb-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h5>Time Remaining: <span id="time-remaining">{{ exam.duration }}:00</span></h5>
+                    </div>
+                    <div>
+                        <h5>Questions: {{ exam.questions.count }}</h5>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" id="exam-form">
+        {% csrf_token %}
+        {% for eq in exam.questions.all %}
+        <div class="card mb-3 question-card">
+            <div class="card-header">
+                <h5>Question {{ forloop.counter }}</h5>
+            </div>
+            <div class="card-body">
+                <p class="card-text">{{ eq.question.text }}</p>
+                <div class="answers">
+                    {% for answer in eq.question.answers.all %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" 
+                               name="question_{{ eq.question.id }}" 
+                               id="answer_{{ answer.id }}" 
+                               value="{{ answer.id }}">
+                        <label class="form-check-label" for="answer_{{ answer.id }}">
+                            {{ answer.text }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary btn-lg">Submit Exam</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+// Timer implementation
+let duration = {{ exam.duration }} * 60; // Convert to seconds
+const timerElement = document.getElementById('time-remaining');
+
+function updateTimer() {
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    
+    if (duration <= 0) {
+        document.getElementById('exam-form').submit();
+    } else {
+        duration--;
+        setTimeout(updateTimer, 1000);
+    }
+}
+
+// Start timer when page loads
+updateTimer();
+</script>
+{% endblock %}

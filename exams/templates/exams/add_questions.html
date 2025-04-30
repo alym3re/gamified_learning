@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+{% block title %}Add Questions to {{ exam.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Add Questions to {{ exam.title }}</h1>
+    
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Add Question</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="submit" class="btn btn-primary">Add Question</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Exam Questions ({{ exam_questions.count }})</h5>
+                    <a href="{% url 'exam_list' %}" class="btn btn-success">Finish</a>
+                </div>
+                <div class="card-body">
+                    <div class="sortable-questions">
+                        {% for eq in exam_questions %}
+                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded" 
+                             data-question-id="{{ eq.id }}" id="question-{{ eq.id }}">
+                            <div>
+                                <strong>Q{{ forloop.counter }}:</strong> 
+                                {{ eq.question.text|truncatewords:10 }}
+                                <span class="badge bg-secondary ms-2">{{ eq.points }} pt{{ eq.points|pluralize }}</span>
+                            </div>
+                            <button class="btn btn-sm btn-danger" 
+                                    onclick="deleteExamQuestion({{ eq.id }})">
+                                Remove
+                            </button>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-info">No questions added yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+const examId = {{ exam.id }};
+const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+</script>
+<script src="{% static 'exams/js/script.js' %}"></script>
+{% endblock %}
