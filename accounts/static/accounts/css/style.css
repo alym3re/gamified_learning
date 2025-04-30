@@ -1,76 +1,71 @@
-/* Auth Cards */
-.auth-card {
-    border-radius: 10px;
-    overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    margin-top: 2rem;
-    margin-bottom: 2rem;
+
+/* BEGIN: Modern universal registration/auth form styles */
+.auth-card form input,
+.auth-card form select,
+.auth-card form textarea {
+  border-radius: 8px;
+  border: 1px solid var(--primary-color);
+  background: #fff;
+  font-size: 1rem;
+  padding: 0.65rem 1.1rem;
+  width: 100%;
+  transition: border-color 0.18s, background 0.18s;
+  box-shadow: none !important;
+  outline: none;
+  margin-bottom: 0.3rem;
 }
 
-.auth-card .card-header {
-    padding: 1.5rem;
-    text-align: center;
+.auth-card form input:focus,
+.auth-card form select:focus,
+.auth-card form textarea:focus {
+  border-color: var(--secondary-color);
+  background: #fff;
 }
 
-.auth-card .card-body {
-    padding: 2rem;
+.auth-card form input[type="file"] {
+  background: #fff; /* default for file input */
+  padding: 0.4rem 0.6rem;
 }
 
-/* Profile Picture */
-.profile-pic-container {
-    width: 150px;
-    height: 150px;
-    border-radius: 50%;
-    overflow: hidden;
-    margin: 0 auto 1.5rem;
-    border: 5px solid #f8f9fa;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    position: relative;
+.auth-card form .invalid-feedback {
+  color: #c0392b;
+  font-size: 0.97rem;
+  margin-top: -0.25rem;
+  margin-bottom: 0.35rem;
 }
 
-.profile-pic-container img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+.auth-card .form-label {
+  font-weight: 500;
+  color: var(--primary-color);
+  margin-bottom: 0.35rem;
+  display: block;
 }
 
-.profile-pic-overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-    padding: 0.5rem;
-    text-align: center;
-    cursor: pointer;
-    opacity: 0;
-    transition: opacity 0.3s;
+.auth-card .btn-primary {
+  background: var(--primary-color);
+  border: none;
+  border-radius: 10px;
+  font-size: 1.13rem;
+  font-weight: 600;
+  transition: background 0.18s;
 }
 
-.profile-pic-container:hover .profile-pic-overlay {
-    opacity: 1;
+.auth-card .btn-primary:hover {
+  background: var(--secondary-color);
 }
 
-/* Form Styles */
-.form-control, .form-select {
-    padding: 0.75rem 1rem;
-    border-radius: 0.5rem;
+.auth-card .link-primary {
+  color: var(--primary-color) !important;
+  text-decoration: none;
+  transition: color 0.12s;
 }
 
-.form-label {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
+.auth-card .link-primary:hover {
+  color: var(--secondary-color);
+  text-decoration: underline;
 }
 
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-    .auth-card .card-body {
-        padding: 1.5rem;
-    }
-    
-    .profile-pic-container {
-        width: 120px;
-        height: 120px;
-    }
+.card-header{
+  background-color: var(--primary-color) !important;
 }
+/* END: Modern universal registration/auth form styles */

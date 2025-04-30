@@ -4,7 +4,7 @@
 {% block content %}
 <div class="hero-section bg-primary text-white py-5">
     <div class="container text-center py-5">
-        <h1 class="display-4 fw-bold mb-4">Welcome to Gamified Learning</h1>
+        <h1 class="display-4 fw-bold mb-4">Welcome to Gamified Learning System</h1>
         <p class="lead mb-4">An interactive platform that makes learning fun and engaging through game mechanics.</p>
         {% if user.is_authenticated %}
         <a href="{% url 'dashboard' %}" class="btn btn-light btn-lg px-4 me-2">Go to Dashboard</a>
@@ -20,32 +20,39 @@
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body text-center">
-                    <i class="bi bi-book fs-1 text-primary mb-3"></i>
-                    <h3 class="card-title">Interactive Lessons</h3>
-                    <p class="card-text">Engage with multimedia lessons designed to enhance your learning experience.</p>
+                    <i class="bi bi-bar-chart-steps fs-1 text-primary mb-3"></i>
+                    <h3 class="card-title">Personalized Progress & Analytics</h3>
+                    <p class="card-text">
+                        Visualize your XP, level, and track all activities, lessons, quizzes, and exams—see detailed progress and unlock achievements as you learn.
+                    </p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body text-center">
-                    <i class="bi bi-trophy fs-1 text-primary mb-3"></i>
-                    <h3 class="card-title">Gamified Quizzes</h3>
-                    <p class="card-text">Test your knowledge and earn points, badges, and rewards.</p>
+                    <i class="bi bi-rocket-takeoff fs-1 text-primary mb-3"></i>
+                    <h3 class="card-title">Engaging Lessons & Gamified Quizzes</h3>
+                    <p class="card-text">
+                        Access and complete interactive lessons and quizzes, earn instant feedback and XP, and compete for badges and top scores.
+                    </p>
                 </div>
             </div>
         </div>
         <div class="col-md-4">
             <div class="card h-100">
                 <div class="card-body text-center">
-                    <i class="bi bi-graph-up fs-1 text-primary mb-3"></i>
-                    <h3 class="card-title">Track Progress</h3>
-                    <p class="card-text">Monitor your learning journey with detailed analytics and reports.</p>
+                    <i class="bi bi-award fs-1 text-primary mb-3"></i>
+                    <h3 class="card-title">Achievements & Leaderboards</h3>
+                    <p class="card-text">
+                        Earn badges for your accomplishments, climb the leaderboard, and showcase mastery with detailed exam results and history.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 <div class="bg-light py-5">
     <div class="container">
