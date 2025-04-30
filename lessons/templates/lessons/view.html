@@ -1,0 +1,150 @@
+
+{% extends 'base.html' %}
+{% block title %}{{ lesson.title }}{% endblock %}
+
+{% block content %}
+<div class="container lesson-view-container">
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'lessons:lesson_list' %}">Lessons</a></li>
+            {% if lesson.category %}
+            <li class="breadcrumb-item"><a href="{% url 'lessons:lesson_list' %}?category={{ lesson.category.id }}">{{ lesson.category.name }}</a></li>
+            {% endif %}
+            <li class="breadcrumb-item active" aria-current="page">{{ lesson.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="mb-0">{{ lesson.title }}</h2>
+                        {% if user.is_staff %}
+                        <a href="{% url 'admin:lessons_lesson_change' lesson.id %}" class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="badge bg-{% if lesson.difficulty == 'beginner' %}success{% elif lesson.difficulty == 'intermediate' %}warning{% else %}danger{% endif %}">
+                            {{ lesson.get_difficulty_display }}
+                        </span>
+                        <small class="text-muted">Uploaded on {{ lesson.upload_date|date:"M d, Y" }} by {{ lesson.uploaded_by.get_full_name }}</small>
+                    </div>
+
+                    {% if lesson.thumbnail %}
+                    <img src="{{ lesson.thumbnail.url }}" class="img-fluid rounded mb-4" alt="{{ lesson.title }}">
+                    {% endif %}
+
+                    <div class="lesson-content mb-4">
+                        {% if lesson.content %}
+                            {{ lesson.content|linebreaks }}
+                        {% else %}
+                            <div class="alert alert-info">No additional content provided for this lesson.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="badge bg-secondary me-2">
+                                <i class="fas fa-eye me-1"></i> {{ lesson.view_count }} views
+                            </span>
+                            {% if lesson.category %}
+                            <span class="badge bg-primary">
+                                <i class="{{ lesson.category.icon }} me-1"></i>
+                                {{ lesson.category.name }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <form method="post" action="{% url 'lessons:mark_completed' lesson.slug %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm {% if progress.completed %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                                    <i class="fas fa-check me-1"></i>
+                                    {% if progress.completed %}Completed{% else %}Mark Complete{% endif %}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Preview/Download -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Lesson Materials</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-file-{{ lesson.extension|slice:'1:' }} fa-2x me-3 text-primary"></i>
+                            <span>{{ lesson.file.name|slice:"14:" }}</span>
+                        </div>
+                        <div>
+                            <a href="{{ lesson.file.url }}" class="btn btn-primary btn-sm" download>
+                                <i class="fas fa-download me-1"></i> Download
+                            </a>
+                        </div>
+                    </div>
+
+                    {% if can_preview %}
+                    <hr>
+                    <div class="file-preview mt-3">
+                        <h6>Preview</h6>
+                        {% if lesson.extension == '.pdf' %}
+                        <iframe src="{{ lesson.file.url }}#view=fitH" class="w-100" style="height: 500px; border: 1px solid #eee;"></iframe>
+                        {% else %}
+                        <pre class="bg-light p-3">{{ lesson.file.read.decode }}</pre>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <!-- Progress Notes -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Notes</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{% url 'lessons:view_lesson' lesson.slug %}">
+                        {% csrf_token %}
+                        <textarea class="form-control mb-2" name="notes" rows="5" 
+                                  placeholder="Add your personal notes about this lesson...">{{ progress.notes }}</textarea>
+                        <button type="submit" class="btn btn-primary btn-sm">Save Notes</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Related Lessons -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Related Lessons</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for related in related_lessons %}
+                        <a href="{% url 'lessons:view_lesson' related.slug %}" class="list-group-item list-group-item-action">
+                            <div class="d-flex w-100 justify-content-between">
+                                <h6 class="mb-1">{{ related.title }}</h6>
+                                <small class="text-muted">{{ related.upload_date|date:"M d" }}</small>
+                            </div>
+                            <small class="text-muted">{{ related.get_difficulty_display }}</small>
+                        </a>
+                        {% empty %}
+                        <div class="text-muted">No related lessons found</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

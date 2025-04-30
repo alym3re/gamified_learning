@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Upload Lesson{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="mb-0">Upload New Lesson</h2>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        {{ form.non_field_errors }}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.title.id_for_label }}" class="form-label">Title</label>
+                            {{ form.title }}
+                            {{ form.title.errors }}
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+                            {{ form.description }}
+                            {{ form.description.errors }}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.category.id_for_label }}" class="form-label">Category</label>
+                                {{ form.category }}
+                                {{ form.category.errors }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.difficulty.id_for_label }}" class="form-label">Difficulty Level</label>
+                                {{ form.difficulty }}
+                                {{ form.difficulty.errors }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.content.id_for_label }}" class="form-label">Content (Markdown supported)</label>
+                            {{ form.content }}
+                            {{ form.content.errors }}
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.file.id_for_label }}" class="form-label">Lesson File</label>
+                                {{ form.file }}
+                                {{ form.file.errors }}
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="{{ form.thumbnail.id_for_label }}" class="form-label">Thumbnail Image</label>
+                                {{ form.thumbnail }}
+                                {{ form.thumbnail.errors }}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            {{ form.is_featured }}
+                            <label for="{{ form.is_featured.id_for_label }}" class="form-check-label">Feature this lesson</label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Upload Lesson</button>
+                            <a href="{% url 'lessons:lesson_list' %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

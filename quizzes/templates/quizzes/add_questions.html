@@ -1,0 +1,142 @@
+{% extends 'base.html' %}
+{% block title %}Add Questions to {{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Add Questions to {{ quiz.title }}</h1>
+    
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Add Question</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="question-form">
+                        {% csrf_token %}
+                        {{ question_form.as_p }}
+                        
+                        <h6 class="mt-4">Answers</h6>
+                        {{ answer_formset.management_form }}
+                        {% for form in answer_formset %}
+                            <div class="answer-form mb-3 p-2 border rounded">
+                                {{ form.id }}
+                                <div class="form-check mb-2">
+                                    {{ form.is_correct }}
+                                    <label class="form-check-label" for="{{ form.is_correct.id_for_label }}">
+                                        Correct Answer
+                                    </label>
+                                </div>
+                                {{ form.text }}
+                                {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        <button type="submit" class="btn btn-primary">Add Question</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Quiz Questions ({{ questions.count }})</h5>
+                    <a href="{% url 'quiz_list' %}" class="btn btn-success">Finish</a>
+                </div>
+                <div class="card-body">
+                    <div id="questions-list">
+                        {% for question in questions %}
+                        <div class="question-item mb-3 p-3 border rounded" id="question-{{ question.id }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Q{{ forloop.counter }}:</strong> 
+                                    {{ question.text|truncatewords:10 }}
+                                    <span class="badge bg-secondary ms-2">{{ question.points }} pt{{ question.points|pluralize }}</span>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-danger delete-question" 
+                                            data-question-id="{{ question.id }}"
+                                            data-quiz-id="{{ quiz.id }}">
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div class="answers mt-2">
+                                {% for answer in question.answers.all %}
+                                    <span class="badge {% if answer.is_correct %}bg-success{% else %}bg-light text-dark{% endif %}">
+                                        {{ answer.text|truncatewords:3 }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-info">No questions added yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script>
+// Delete question via AJAX
+document.querySelectorAll('.delete-question').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const questionId = this.dataset.questionId;
+        const quizId = this.dataset.quizId;
+        
+        if (confirm('Are you sure you want to delete this question?')) {
+            fetch(`/quizzes/${quizId}/questions/${questionId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Accept': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById(`question-${questionId}`).remove();
+                }
+            });
+        }
+    });
+});
+
+// Add more answer fields dynamically
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('question-form');
+    const totalForms = document.getElementById('id_answers-TOTAL_FORMS');
+    const container = document.querySelector('.card-body');
+    
+    let formNum = parseInt(totalForms.value);
+    
+    // Add button to add more answers
+    const addButton = document.createElement('button');
+    addButton.type = 'button';
+    addButton.className = 'btn btn-sm btn-outline-primary mt-2';
+    addButton.textContent = 'Add Another Answer';
+    container.appendChild(addButton);
+    
+    addButton.addEventListener('click', function() {
+        const newForm = document.createElement('div');
+        newForm.className = 'answer-form mb-3 p-2 border rounded';
+        newForm.innerHTML = `
+            <div class="form-check mb-2">
+                <input type="checkbox" name="answers-${formNum}-is_correct" id="id_answers-${formNum}-is_correct" class="form-check-input">
+                <label class="form-check-label" for="id_answers-${formNum}-is_correct">Correct Answer</label>
+            </div>
+            <input type="text" name="answers-${formNum}-text" class="form-control" id="id_answers-${formNum}-text">
+        `;
+        container.insertBefore(newForm, addButton);
+        formNum++;
+        totalForms.value = formNum;
+    });
+});
+</script>
+{% endblock %}

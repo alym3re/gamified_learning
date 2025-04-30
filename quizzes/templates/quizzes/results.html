@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Quiz Results - {{ attempt.quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card mb-4 {% if attempt.passed %}border-success{% else %}border-danger{% endif %}">
+        <div class="card-header {% if attempt.passed %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+            <h2>Quiz Results: {{ attempt.quiz.title }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Date Taken:</strong> {{ attempt.start_time|date:"M d, Y H:i" }}</p>
+                    <p><strong>Time Spent:</strong> 
+                        {% if attempt.end_time %}
+                            {{ attempt.end_time|timeuntil:attempt.start_time }}
+                        {% else %}
+                            Not completed
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Your Score:</strong> {{ attempt.score|floatformat:1 }}%</p>
+                    <p><strong>Passing Score:</strong> {{ attempt.quiz.passing_score }}%</p>
+                    <p><strong>Result:</strong> 
+                        {% if attempt.passed %}
+                            <span class="badge bg-success">Passed</span>
+                        {% else %}
+                            <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if show_answers %}
+        <h3 class="mb-3">Question Review</h3>
+        {% for question in attempt.quiz.questions.all %}
+            <div class="card mb-3 {% if user_answers.get(question.id).is_correct %}border-success{% else %}border-danger{% endif %}">
+                <div class="card-header">
+                    <h5>Question {{ forloop.counter }}</h5>
+                    <p>{{ question.text }}</p>
+                </div>
+                <div class="card-body">
+                    <p><strong>Your Answer:</strong> 
+                        {% with user_answer=user_answers.get(question.id) %}
+                            {% if user_answer.selected_answer %}
+                                {{ user_answer.selected_answer.text }}
+                                {% if user_answer.is_correct %}
+                                    <span class="badge bg-success ms-2">Correct</span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-2">Incorrect</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">No answer selected</span>
+                            {% endif %}
+                        {% endwith %}
+                    </p>
+                    
+                    {% if not user_answers.get(question.id).is_correct %}
+                        <p class="mb-2"><strong>Correct Answer:</strong></p>
+                        <ul class="list-group mb-3">
+                            {% for answer in question.answers.all %}
+                                {% if answer.is_correct %}
+                                    <li class="list-group-item bg-success bg-opacity-10">
+                                        {{ answer.text }}
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    
+                    {% if question.explanation %}
+                        <div class="alert alert-info mt-3">
+                            <strong>Explanation:</strong> {{ question.explanation }}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info">
+            Correct answers are not shown for this quiz.
+        </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{% url 'quiz_list' %}" class="btn btn-primary">Back to Quizzes</a>
+        <a href="{% url 'quiz_history' %}" class="btn btn-outline-secondary">View Your Quiz History</a>
+    </div>
+</div>
+{% endblock %}

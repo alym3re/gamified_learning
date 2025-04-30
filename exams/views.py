@@ -6,6 +6,8 @@ from django.db import transaction
 from .models import Exam, ExamAttempt, ExamQuestion, UserAnswer
 from .forms import ExamForm, ExamQuestionForm
 from quizzes.models import Question, Answer
+from django.views.decorators.http import require_POST
+
 
 @login_required
 def exam_list(request):
@@ -164,3 +166,49 @@ def review_exam(request, attempt_id):
         'exam_questions': exam_questions,
         'user_answers': user_answers
     })
+
+@login_required
+def delete_exam_question(request, exam_id, exam_question_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to modify this exam.")
+        return redirect('exam_list')
+    
+    exam_question = get_object_or_404(ExamQuestion, id=exam_question_id, exam=exam)
+    
+    if request.method == 'POST':
+        exam_question.delete()
+        messages.success(request, "Question removed from exam.")
+        return redirect('add_exam_questions', exam_id=exam.id)
+    
+    return render(request, 'exams/confirm_delete_question.html', {
+        'exam': exam,
+        'exam_question': exam_question,
+    })
+
+
+
+@login_required
+@require_POST
+def reorder_questions(request, exam_id):
+    exam = get_object_or_404(Exam, id=exam_id)
+    if not request.user.is_staff:
+        messages.error(request, "You don't have permission to reorder questions for this exam.")
+        return redirect('exam_list')
+
+    # Expecting a list of exam_question_ids in the desired order
+    order_list = request.POST.getlist('order[]')
+    if not order_list:
+        messages.error(request, "No order data received.")
+        return redirect('add_exam_questions', exam_id=exam.id)
+
+    # Validate all IDs belong to this exam
+    exam_questions = {str(eq.id): eq for eq in exam.exam_questions.all()}
+    for idx, eq_id in enumerate(order_list):
+        eq = exam_questions.get(eq_id)
+        if eq:
+            eq.order = idx
+            eq.save(update_fields=['order'])
+
+    messages.success(request, "Questions reordered successfully.")
+    return redirect('add_exam_questions', exam_id=exam.id)

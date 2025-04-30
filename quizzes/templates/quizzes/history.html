@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Your Quiz History{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Your Quiz History</h1>
+    
+    {% if not attempts %}
+        <div class="alert alert-info">You haven't taken any quizzes yet.</div>
+    {% else %}
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Quiz</th>
+                        <th>Date Taken</th>
+                        <th>Score</th>
+                        <th>Result</th>
+                        <th>Time Spent</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attempt in attempts %}
+                    <tr>
+                        <td>{{ attempt.quiz.title }}</td>
+                        <td>{{ attempt.start_time|date:"M d, Y H:i" }}</td>
+                        <td>{{ attempt.score|floatformat:1 }}%</td>
+                        <td>
+                            {% if attempt.passed %}
+                                <span class="badge bg-success">Passed</span>
+                            {% else %}
+                                <span class="badge bg-danger">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if attempt.end_time %}
+                                {{ attempt.end_time|timeuntil:attempt.start_time }}
+                            {% else %}
+                                Not completed
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{% url 'quiz_results' attempt.id %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+    
+    <div class="mt-3">
+        <a href="{% url 'quiz_list' %}" class="btn btn-primary">Back to Quizzes</a>
+    </div>
+</div>
+{% endblock %}

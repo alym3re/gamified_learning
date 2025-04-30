@@ -1,0 +1,186 @@
+
+{% extends 'base.html' %}
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container dashboard-container">
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-md-4">
+            <!-- Profile Card -->
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    <img src="{{ request.user.profile_pic.url }}" 
+                         class="rounded-circle mb-3" 
+                         width="120" 
+                         height="120" 
+                         alt="Profile Picture">
+                    <h4>{{ request.user.get_full_name }}</h4>
+                    <p class="text-muted">{{ request.user.student_id }}</p>
+                    
+                    <div class="progress mb-3" style="height: 20px;">
+                        <div class="progress-bar bg-success" 
+                             role="progressbar" 
+                             style="width: {{ xp_percent }}%" 
+                             aria-valuenow="{{ xp_in_level }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="1000">
+                            Level {{ progress.level }}
+                        </div>
+                    </div>
+                    <p>{{ progress.total_xp }} XP ({{ xp_to_next_level }} to next level)</p>
+                </div>
+            </div>
+            
+            <!-- Badges -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Recent Badges</h5>
+                </div>
+                <div class="card-body">
+                    {% if badges %}
+                        <div class="d-flex flex-wrap">
+                            {% for badge in badges %}
+                            <div class="text-center mx-2 mb-3">
+                                <i class="{{ badge.icon }} fa-2x text-warning mb-2"></i>
+                                <p class="small mb-0">{{ badge.name }}</p>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <a href="#" class="btn btn-sm btn-outline-primary">View All</a>
+                    {% else %}
+                        <p class="text-muted">No badges earned yet</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Middle Column -->
+        <div class="col-md-5">
+            <!-- Progress -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Your Progress</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6>Lessons Completed</h6>
+                        <div class="progress">
+                            <div class="progress-bar" 
+                                 role="progressbar" 
+                                 style="width: {{ lesson_progress }}%" 
+                                 aria-valuenow="{{ lesson_progress }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ lesson_progress }}%
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body text-center">
+                                    <h2 class="mb-0">{{ quiz_attempts.count }}</h2>
+                                    <p class="small mb-0">Quizzes Taken</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body text-center">
+                                    <h2 class="mb-0">{{ exam_attempts.count }}</h2>
+                                    <p class="small mb-0">Exams Completed</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Lessons -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Recent Lessons</h5>
+                    <a href="{% url 'lessons:lesson_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                    {% if recent_lessons %}
+                        <div class="list-group">
+                            {% for lesson in recent_lessons %}
+                            <a href="{% url 'view_lesson' lesson.id %}" 
+                               class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ lesson.title }}</h6>
+                                    <small>{{ lesson.upload_date|timesince }} ago</small>
+                                </div>
+                                <p class="mb-1 small text-muted">{{ lesson.description|truncatewords:15 }}</p>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No recent lessons</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Right Column -->
+        <div class="col-md-3">
+            <!-- Activity Feed -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Recent Activity</h5>
+                </div>
+                <div class="card-body activity-feed">
+                    {% if activities %}
+                        {% for activity in activities %}
+                        <div class="activity-item mb-3">
+                            <div class="d-flex">
+                                <div class="flex-shrink-0">
+                                    <i class="fas 
+                                        {% if activity.activity_type == 'lesson' %}fa-book text-primary
+                                        {% elif activity.activity_type == 'quiz' %}fa-question-circle text-info
+                                        {% elif activity.activity_type == 'exam' %}fa-clipboard-check text-danger
+                                        {% else %}fa-user-circle text-secondary{% endif %}">
+                                    </i>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <p class="mb-0 small">
+                                        {{ activity.get_activity_type_display }}
+                                        {% if activity.xp_earned > 0 %}
+                                            <span class="badge bg-success ms-2">+{{ activity.xp_earned }} XP</span>
+                                        {% endif %}
+                                    </p>
+                                    <small class="text-muted">{{ activity.timestamp|timesince }} ago</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No recent activity</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <a href="{% url 'lessons:lesson_list' %}" class="btn btn-outline-primary btn-sm mb-2 w-100">
+                        <i class="fas fa-book me-2"></i>View Lessons
+                    </a>
+                    <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-outline-info btn-sm mb-2 w-100">
+                        <i class="fas fa-question-circle me-2"></i>Take a Quiz
+                    </a>
+                    <a href="{% url 'exams:exam_list' %}" class="btn btn-outline-danger btn-sm mb-2 w-100">
+                        <i class="fas fa-clipboard-check me-2"></i>Start Exam
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
