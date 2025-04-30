@@ -1,3 +1,4 @@
+from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -21,7 +22,7 @@ def quiz_list(request):
 def create_quiz(request):
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to create quizzes.")
-        return redirect('quiz_list')
+        return redirect('quizzes:quiz_list')
     
     if request.method == 'POST':
         form = QuizForm(request.POST)
@@ -30,7 +31,7 @@ def create_quiz(request):
             quiz.created_by = request.user
             quiz.save()
             messages.success(request, 'Quiz created successfully!')
-            return redirect('add_quiz_questions', quiz_id=quiz.id)
+            return redirect('quizzes:add_quiz_questions', quiz_id=quiz.id)
     else:
         form = QuizForm()
     return render(request, 'quizzes/create.html', {'form': form})
@@ -40,7 +41,7 @@ def add_quiz_questions(request, quiz_id):
     quiz = get_object_or_404(Quiz, id=quiz_id)
     if not request.user.is_staff or quiz.created_by != request.user:
         messages.error(request, "You don't have permission to edit this quiz.")
-        return redirect('quiz_list')
+        return redirect('quizzes:quiz_list')
     
     if request.method == 'POST':
         question_form = QuestionForm(request.POST)
@@ -63,7 +64,7 @@ def add_quiz_questions(request, quiz_id):
                     raise forms.ValidationError("At least one answer must be marked as correct.")
                 
                 messages.success(request, 'Question added successfully!')
-                return redirect('add_quiz_questions', quiz_id=quiz.id)
+                return redirect('quizzes:add_quiz_questions', quiz_id=quiz.id)
     else:
         question_form = QuestionForm()
         answer_formset = AnswerFormSet(prefix='answers')
@@ -126,7 +127,7 @@ def take_quiz(request, quiz_id):
             attempt.save()
             
             messages.success(request, 'Quiz submitted successfully!')
-            return redirect('quiz_results', attempt_id=attempt.id)
+            return redirect('quizzes:quiz_results', attempt_id=attempt.id)
     
     questions = quiz.questions.all().prefetch_related('answers')
     if quiz.shuffle_questions:
@@ -146,18 +147,29 @@ def quiz_results(request, attempt_id):
     attempt = get_object_or_404(QuizAttempt, id=attempt_id, user=request.user)
     if not attempt.completed:
         messages.error(request, "This quiz attempt is not completed yet.")
-        return redirect('quiz_list')
-    
-    user_answers = {
-        ua.question_id: ua 
+        return redirect('quizzes:quiz_list')
+
+    # Precompute question/user_answer pairs for template
+    user_answer_map = {
+        ua.question_id: ua
         for ua in attempt.user_answers.select_related('question', 'selected_answer')
     }
-    
+
+    # This produces: [ (question, user_answer), ... ]
+    question_review = []
+    for question in attempt.quiz.questions.all():
+        user_answer = user_answer_map.get(question.id)
+        question_review.append({
+            'question': question,
+            'user_answer': user_answer,
+        })
+
     return render(request, 'quizzes/results.html', {
         'attempt': attempt,
-        'user_answers': user_answers,
+        'question_review': question_review,  # List of dicts for the template
         'show_answers': attempt.quiz.show_correct_answers
     })
+
 
 @login_required
 def quiz_history(request):

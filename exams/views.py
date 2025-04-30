@@ -1,3 +1,4 @@
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -7,7 +8,6 @@ from .models import Exam, ExamAttempt, ExamQuestion, UserAnswer
 from .forms import ExamForm, ExamQuestionForm
 from quizzes.models import Question, Answer
 from django.views.decorators.http import require_POST
-
 
 @login_required
 def exam_list(request):
@@ -22,7 +22,7 @@ def exam_list(request):
 def create_exam(request):
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to create exams.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
     
     if request.method == 'POST':
         form = ExamForm(request.POST)
@@ -31,7 +31,7 @@ def create_exam(request):
             exam.created_by = request.user
             exam.save()
             messages.success(request, 'Exam created successfully!')
-            return redirect('add_exam_questions', exam_id=exam.id)
+            return redirect('exams:add_exam_questions', exam_id=exam.id)
     else:
         form = ExamForm()
     return render(request, 'exams/create.html', {'form': form})
@@ -41,7 +41,7 @@ def add_exam_questions(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to edit this exam.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
     
     existing_question_ids = exam.exam_questions.values_list('question_id', flat=True)
     available_questions = Question.objects.exclude(id__in=existing_question_ids)
@@ -55,7 +55,7 @@ def add_exam_questions(request, exam_id):
                 points=form.cleaned_data['points']
             )
             messages.success(request, 'Question added to exam!')
-            return redirect('add_exam_questions', exam_id=exam.id)
+            return redirect('exams:add_exam_questions', exam_id=exam.id)
     else:
         form = ExamQuestionForm(question_queryset=available_questions)
     
@@ -117,7 +117,7 @@ def take_exam(request, exam_id):
             attempt.save()
             
             messages.success(request, 'Exam submitted successfully!')
-            return redirect('exam_results', attempt_id=attempt.id)
+            return redirect('exams:exam_results', attempt_id=attempt.id)
     
     questions = exam.exam_questions.select_related('question').order_by('order')
     if exam.shuffle_questions:
@@ -136,7 +136,7 @@ def exam_results(request, attempt_id):
     attempt = get_object_or_404(ExamAttempt, id=attempt_id, user=request.user)
     if not attempt.completed:
         messages.error(request, "This exam attempt is not completed yet.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
     
     return render(request, 'exams/results.html', {
         'attempt': attempt,
@@ -148,11 +148,11 @@ def review_exam(request, attempt_id):
     attempt = get_object_or_404(ExamAttempt, id=attempt_id, user=request.user)
     if not attempt.completed:
         messages.error(request, "This exam attempt is not completed yet.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
     
     if not attempt.exam.show_results:
         messages.error(request, "Review is not allowed for this exam.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
     
     user_answers = {
         ua.question_id: ua 
@@ -172,21 +172,19 @@ def delete_exam_question(request, exam_id, exam_question_id):
     exam = get_object_or_404(Exam, id=exam_id)
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to modify this exam.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
     
     exam_question = get_object_or_404(ExamQuestion, id=exam_question_id, exam=exam)
     
     if request.method == 'POST':
         exam_question.delete()
         messages.success(request, "Question removed from exam.")
-        return redirect('add_exam_questions', exam_id=exam.id)
+        return redirect('exams:add_exam_questions', exam_id=exam.id)
     
     return render(request, 'exams/confirm_delete_question.html', {
         'exam': exam,
         'exam_question': exam_question,
     })
-
-
 
 @login_required
 @require_POST
@@ -194,13 +192,13 @@ def reorder_questions(request, exam_id):
     exam = get_object_or_404(Exam, id=exam_id)
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to reorder questions for this exam.")
-        return redirect('exam_list')
+        return redirect('exams:exam_list')
 
     # Expecting a list of exam_question_ids in the desired order
     order_list = request.POST.getlist('order[]')
     if not order_list:
         messages.error(request, "No order data received.")
-        return redirect('add_exam_questions', exam_id=exam.id)
+        return redirect('exams:add_exam_questions', exam_id=exam.id)
 
     # Validate all IDs belong to this exam
     exam_questions = {str(eq.id): eq for eq in exam.exam_questions.all()}
@@ -211,4 +209,4 @@ def reorder_questions(request, exam_id):
             eq.save(update_fields=['order'])
 
     messages.success(request, "Questions reordered successfully.")
-    return redirect('add_exam_questions', exam_id=exam.id)
+    return redirect('exams:add_exam_questions', exam_id=exam.id)

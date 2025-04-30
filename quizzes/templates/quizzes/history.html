@@ -41,7 +41,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            <a href="{% url 'quiz_results' attempt.id %}" class="btn btn-sm btn-outline-primary">View Details</a>
+                            <a href="{% url 'quizzes:quiz_results' attempt.id %}" class="btn btn-sm btn-outline-primary">View Details</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -51,7 +51,7 @@
     {% endif %}
     
     <div class="mt-3">
-        <a href="{% url 'quiz_list' %}" class="btn btn-primary">Back to Quizzes</a>
+        <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-primary">Back to Quizzes</a>
     </div>
 </div>
 {% endblock %}

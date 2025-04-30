@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% block title %}Take Exam - {{ exam.title }}{% endblock %}
 
@@ -51,24 +52,25 @@
 
 {% block js %}
 <script>
-// Timer implementation
-let duration = {{ exam.duration }} * 60; // Convert to seconds
-const timerElement = document.getElementById('time-remaining');
+document.addEventListener('DOMContentLoaded', function() {
+    // Timer implementation
+    let duration = {{ exam.duration }} * 60; // Convert to seconds
+    const timerElement = document.getElementById('time-remaining');
 
-function updateTimer() {
-    const minutes = Math.floor(duration / 60);
-    const seconds = duration % 60;
-    timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    
-    if (duration <= 0) {
-        document.getElementById('exam-form').submit();
-    } else {
-        duration--;
-        setTimeout(updateTimer, 1000);
+    function updateTimer() {
+        const minutes = Math.floor(duration / 60);
+        const seconds = duration % 60;
+        timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+        if (duration <= 0) {
+            document.getElementById('exam-form').submit();
+        } else {
+            duration--;
+            setTimeout(updateTimer, 1000);
+        }
     }
-}
 
-// Start timer when page loads
-updateTimer();
+    updateTimer();
+});
 </script>
 {% endblock %}

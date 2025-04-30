@@ -1,3 +1,4 @@
+
 {% extends 'base.html' %}
 {% block title %}Create New Exam{% endblock %}
 
@@ -10,7 +11,7 @@
                 {% csrf_token %}
                 {{ form.as_p }}
                 <button type="submit" class="btn btn-primary">Create Exam</button>
-                <a href="{% url 'exam_list' %}" class="btn btn-secondary">Cancel</a>
+                <a href="{% url 'exams:exam_list' %}" class="btn btn-secondary">Cancel</a>
             </form>
         </div>
     </div>

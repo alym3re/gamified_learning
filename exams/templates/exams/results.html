@@ -1,0 +1,49 @@
+
+{% extends 'base.html' %}
+{% block title %}Exam Results - {{ attempt.exam.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card mb-4 {% if attempt.passed %}border-success{% else %}border-danger{% endif %}">
+        <div class="card-header {% if attempt.passed %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+            <h2>Exam Results: {{ attempt.exam.title }}</h2>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Date Taken:</strong> {{ attempt.start_time|date:"M d, Y H:i" }}</p>
+                    <p><strong>Time Spent:</strong>
+                        {% if attempt.end_time %}
+                            {{ attempt.end_time|timeuntil:attempt.start_time }}
+                        {% else %}
+                            Not completed
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Your Score:</strong> {{ attempt.score|floatformat:1 }}%</p>
+                    <p><strong>Passing Score:</strong> {{ attempt.exam.passing_score }}%</p>
+                    <p><strong>Result:</strong>
+                        {% if attempt.passed %}
+                            <span class="badge bg-success">Passed</span>
+                        {% else %}
+                            <span class="badge bg-danger">Failed</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Optional: Show review button if exam allows and student passed (or always, adjust as needed) #}
+    {% if show_results %}
+        <div class="mb-4">
+            <a href="{% url 'exams:review_exam' attempt.id %}" class="btn btn-info">Review Answers</a>
+        </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{% url 'exams:exam_list' %}" class="btn btn-primary">Back to Exams</a>
+    </div>
+</div>
+{% endblock %}
