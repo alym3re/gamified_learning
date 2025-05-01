@@ -1,48 +1,34 @@
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.text import slugify
-import os
+
+GRADING_PERIOD_CHOICES = [
+    ('prelim', 'Prelim'),
+    ('midterm', 'Midterm'),
+    ('prefinal', 'Prefinal'),
+    ('final', 'Final'),
+]
 
 def lesson_file_path(instance, filename):
     return f'lesson_files/lesson_{instance.id}/{filename}'
 
-class LessonCategory(models.Model):
-    name = models.CharField(max_length=100)
-    slug = models.SlugField(max_length=100, unique=True)
-    description = models.TextField(blank=True)
-    icon = models.CharField(max_length=50, blank=True, help_text="Font Awesome icon class")
-
-    class Meta:
-        verbose_name_plural = "Lesson Categories"
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-    def save(self, *args, **kwargs):
-        if not self.slug:
-            self.slug = slugify(self.name)
-        super().save(*args, **kwargs)
-
 class Lesson(models.Model):
+    grading_period = models.CharField(
+        max_length=10, 
+        choices=GRADING_PERIOD_CHOICES,
+        default='prelim'  # Default moved here
+    )
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
-    description = models.TextField()
-    content = models.TextField(blank=True)
+    description = models.TextField(help_text="Lesson description (Markdown supported)")
     file = models.FileField(upload_to=lesson_file_path)
     thumbnail = models.ImageField(upload_to='lesson_thumbnails/', blank=True, null=True)
-    category = models.ForeignKey(LessonCategory, on_delete=models.SET_NULL, null=True, blank=True)
     uploaded_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     upload_date = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
     is_featured = models.BooleanField(default=False)
     view_count = models.PositiveIntegerField(default=0)
-    difficulty = models.CharField(max_length=20, choices=[
-        ('beginner', 'Beginner'),
-        ('intermediate', 'Intermediate'),
-        ('advanced', 'Advanced')
-    ], default='beginner')
 
     class Meta:
         ordering = ['-upload_date']
@@ -62,19 +48,35 @@ class Lesson(models.Model):
         super().save(*args, **kwargs)
 
     def extension(self):
+        import os
         name, extension = os.path.splitext(self.file.name)
         return extension.lower()
 
     def increment_view_count(self):
         self.view_count += 1
-        self.save()
+        self.save(update_fields=["view_count"])
+
+class LessonAccess(models.Model):
+    ACCESS_TYPE_CHOICES = [
+        ('view', 'Viewed'),
+        ('download', 'Downloaded'),
+    ]
+    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    access_type = models.CharField(max_length=10, choices=ACCESS_TYPE_CHOICES)
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        return f"{self.user.username} {self.access_type} {self.lesson.title} on {self.timestamp}"
 
 class LessonProgress(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
     completed = models.BooleanField(default=False)
     last_viewed = models.DateTimeField(auto_now=True)
-    notes = models.TextField(blank=True)
 
     class Meta:
         unique_together = ('user', 'lesson')

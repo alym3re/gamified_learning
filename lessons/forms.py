@@ -1,35 +1,27 @@
 from django import forms
-from .models import Lesson, LessonCategory
+from .models import Lesson, GRADING_PERIOD_CHOICES
 
 class LessonForm(forms.ModelForm):
+    grading_period = forms.ChoiceField(
+        choices=GRADING_PERIOD_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        label='Grading Period'
+    )
+
     class Meta:
         model = Lesson
         fields = [
-            'title', 'description', 'content', 'file', 
-            'thumbnail', 'category', 'difficulty', 'is_featured'
+            'title', 'description', 'file', 'thumbnail', 'grading_period', 'is_featured'
         ]
         widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'content': forms.Textarea(attrs={'rows': 10}),
-            'difficulty': forms.Select(attrs={'class': 'form-select'}),
-            'category': forms.Select(attrs={'class': 'form-select'}),
+            'description': forms.Textarea(attrs={'rows': 7}),
         }
         labels = {
-            'is_featured': 'Feature this lesson on homepage'
+            'description': 'Description (Markdown supported)',
+            'is_featured': 'Feature this lesson'
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['file'].required = True
         self.fields['thumbnail'].help_text = "Optional. Recommended size: 800x450px"
-
-class LessonCategoryForm(forms.ModelForm):
-    class Meta:
-        model = LessonCategory
-        fields = ['name', 'description', 'icon']
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-            'icon': forms.TextInput(attrs={
-                'placeholder': 'Example: fas fa-book'
-            })
-        }

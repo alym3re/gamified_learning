@@ -1,56 +1,14 @@
-
 {% extends 'base.html' %}
-{% block title %}Lessons{% endblock %}
+{% block title %}{{ grading_period.get_name_display }} Lessons{% endblock %}
 
 {% block content %}
-<div class="container lessons-container">
+<div class="container lessons-container pt-4">
     <div class="row mb-4">
-        <div class="col-md-8">
-            <h1>Lessons Library</h1>
-        </div>
-        <div class="col-md-4 text-end">
-            {% if user.is_staff %}
-            <a href="{% url 'lessons:upload_lesson' %}" class="btn btn-primary">
-                <i class="fas fa-upload me-2"></i>Upload Lesson
-            </a>
-            {% endif %}
+        <div class="col">
+            <h2>{{ grading_period.get_name_display }} Lessons</h2>
         </div>
     </div>
 
-    <!-- Filters -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" class="row g-3">
-                <div class="col-md-4">
-                    <select name="category" class="form-select">
-                        <option value="">All Categories</option>
-                        {% for category in categories %}
-                        <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
-                            {{ category.name }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <select name="difficulty" class="form-select">
-                        <option value="">All Levels</option>
-                        <option value="beginner" {% if selected_difficulty == 'beginner' %}selected{% endif %}>Beginner</option>
-                        <option value="intermediate" {% if selected_difficulty == 'intermediate' %}selected{% endif %}>Intermediate</option>
-                        <option value="advanced" {% if selected_difficulty == 'advanced' %}selected{% endif %}>Advanced</option>
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <input type="text" name="q" class="form-control" placeholder="Search lessons..." 
-                           value="{{ search_query }}">
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Filter</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Lessons Grid -->
     <div class="row">
         {% for lesson in page_obj %}
         <div class="col-md-6 col-lg-4 mb-4">
@@ -63,20 +21,8 @@
                 </div>
                 {% endif %}
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <span class="badge bg-{% if lesson.difficulty == 'beginner' %}success{% elif lesson.difficulty == 'intermediate' %}warning{% else %}danger{% endif %}">
-                            {{ lesson.get_difficulty_display }}
-                        </span>
-                        <small class="text-muted">{{ lesson.upload_date|date:"M d, Y" }}</small>
-                    </div>
                     <h5 class="card-title">{{ lesson.title }}</h5>
                     <p class="card-text">{{ lesson.description|truncatewords:20 }}</p>
-                    {% if lesson.category %}
-                    <span class="badge bg-secondary mb-2">
-                        <i class="{{ lesson.category.icon }} me-1"></i>
-                        {{ lesson.category.name }}
-                    </span>
-                    {% endif %}
                 </div>
                 <div class="card-footer bg-white">
                     <a href="{% url 'lessons:view_lesson' lesson.slug %}" class="btn btn-outline-primary btn-sm">
@@ -90,34 +36,31 @@
         </div>
         {% empty %}
         <div class="col-12">
-            <div class="alert alert-info">No lessons found matching your criteria.</div>
+            <div class="alert alert-info">No lessons found for this grading period.</div>
         </div>
         {% endfor %}
     </div>
 
-    <!-- Pagination -->
     {% if page_obj.has_other_pages %}
     <nav aria-label="Lessons pagination" class="mt-4">
         <ul class="pagination justify-content-center">
             {% if page_obj.has_previous %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">Previous</a>
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
             </li>
             {% endif %}
-
             {% for num in page_obj.paginator.page_range %}
             {% if page_obj.number == num %}
             <li class="page-item active"><span class="page-link">{{ num }}</span></li>
             {% else %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ num }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">{{ num }}</a>
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
             </li>
             {% endif %}
             {% endfor %}
-
             {% if page_obj.has_next %}
             <li class="page-item">
-                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_category %}&category={{ selected_category }}{% endif %}{% if selected_difficulty %}&difficulty={{ selected_difficulty }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}">Next</a>
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
             </li>
             {% endif %}
         </ul>
