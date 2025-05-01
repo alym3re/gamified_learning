@@ -3,7 +3,7 @@
   --primary-color: #762730;     /* Deep maroon */
   --secondary-color: #92323d;   /* Lighter maroon with a warm tone */
   --accent-color: #f7c59f;      /* Soft beige for highlight contrast */
-  --light-color: #f8f4f2;       /* Near-white with warm tint */
+  --light-color: #fff;       /* Near-white with warm tint */
   --dark-color: #2e1a17;        /* Very dark maroon for depth */
   --success-color: #4caf50;     /* Natural green for success messages */
   --danger-color: #c0392b;      /* Warm red for errors */

@@ -84,3 +84,14 @@ class LessonProgress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.lesson.title}"
+
+class PeriodLock(models.Model):
+    grading_period = models.CharField(
+        max_length=10,
+        choices=GRADING_PERIOD_CHOICES,
+        unique=True
+    )
+    locked = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.get_grading_period_display()} ({'Locked' if self.locked else 'Unlocked'})"

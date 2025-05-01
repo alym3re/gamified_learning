@@ -2,11 +2,17 @@ from django import forms
 from .models import Lesson, GRADING_PERIOD_CHOICES
 
 class LessonForm(forms.ModelForm):
-    grading_period = forms.ChoiceField(
-        choices=GRADING_PERIOD_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-select'}),
-        label='Grading Period'
-    )
+    class Meta:
+        model = Lesson
+        fields = ['title', 'description', 'grading_period', 'file', 'thumbnail', 'is_featured']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-control'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
+            'grading_period': forms.Select(attrs={'class': 'form-select'}),
+            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'thumbnail': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
     class Meta:
         model = Lesson

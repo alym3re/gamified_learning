@@ -1,9 +1,13 @@
+
+/* Import Poppins from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 /* Base Styles */
 :root {
   --primary-color: #762730;     /* Deep maroon */
   --secondary-color: #92323d;   /* Lighter maroon with a warm tone */
   --accent-color: #f7c59f;      /* Soft beige for highlight contrast */
-  --light-color: #f8f4f2;       /* Near-white with warm tint */
+  --light-color: #fff;       /* Near-white with warm tint */
   --dark-color: #2e1a17;        /* Very dark maroon for depth */
   --success-color: #4caf50;     /* Natural green for success messages */
   --danger-color: #c0392b;      /* Warm red for errors */
@@ -12,15 +16,16 @@
 }
 
 
-  
-  body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    line-height: 1.6;
-    color: var(--dark-color);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+
+body {
+  font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--dark-color);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
   
   .container {
     max-width: 1200px;
@@ -67,6 +72,8 @@
     --bs-btn-disabled-border-color: #762730 !important;
     --bs-gradient: none;
 }
+
+
 
   
   /* Header Styles */

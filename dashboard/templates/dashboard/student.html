@@ -102,13 +102,13 @@
             <div class="card mb-4">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5>Recent Lessons</h5>
-                    <a href="{% url 'lessons:lesson_list_by_period' %}" class="btn btn-sm btn-outline-primary">View All</a>
+                    <!-- Use a default grading period for the "View All" button if none is in context -->
                 </div>
                 <div class="card-body">
                     {% if recent_lessons %}
                         <div class="list-group">
                             {% for lesson in recent_lessons %}
-                            <a href="{% url 'lessons:view_lesson' lesson.id %}" 
+                            <a href="{% url 'lessons:view_lesson' lesson.slug %}" 
                                class="list-group-item list-group-item-action">
                                 <div class="d-flex w-100 justify-content-between">
                                     <h6 class="mb-1">{{ lesson.title }}</h6>
@@ -142,8 +142,7 @@
                                         {% if activity.activity_type == 'lesson' %}fa-book text-primary
                                         {% elif activity.activity_type == 'quiz' %}fa-question-circle text-info
                                         {% elif activity.activity_type == 'exam' %}fa-clipboard-check text-danger
-                                        {% else %}fa-user-circle text-secondary{% endif %}">
-                                    </i>
+                                        {% else %}fa-user-circle text-secondary{% endif %}"></i>
                                 </div>
                                 <div class="flex-grow-1 ms-3">
                                     <p class="mb-0 small">
@@ -169,7 +168,7 @@
                     <h5>Quick Actions</h5>
                 </div>
                 <div class="card-body">
-                    <a href="{% url 'lessons:lesson_list' %}" class="btn btn-outline-primary btn-sm mb-2 w-100">
+                    <a href="{% url 'lessons:grading_period_list' %}" class="btn btn-outline-primary btn-sm mb-2 w-100">
                         <i class="fas fa-book me-2"></i>View Lessons
                     </a>
                     <a href="{% url 'quizzes:quiz_list' %}" class="btn btn-outline-info btn-sm mb-2 w-100">
