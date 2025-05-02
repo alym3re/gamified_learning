@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% block title %}Quiz - {{ quiz.title }}{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between">
+            <div>
+                <h2 style="margin-bottom:0;">{{ quiz.title }}</h2>
+                <span class="badge bg-secondary">{{ grading_period_display }}</span>
+                {% if quiz.is_featured %}
+                    <span class="badge bg-warning text-dark">Featured</span>
+                {% endif %}
+            </div>
+            {% if quiz.is_archived %}
+                <span class="badge bg-dark align-self-center">Archived</span>
+            {% endif %}
+        </div>
+        {% if quiz.thumbnail %}
+        <img src="{{ quiz.thumbnail.url }}" class="card-img-top" alt="Quiz thumbnail">
+        {% endif %}
+        <div class="card-body">
+            <p class="lead">{{ quiz.description }}</p>
+            <ul class="list-unstyled">
+                <li><strong>Questions:</strong> {{ questions|length }}</li>
+                <li><strong>Passing Score:</strong> {{ quiz.passing_score }}%</li>
+                {% if quiz.time_limit %}
+                <li><strong>Time Limit:</strong> {{ quiz.time_limit }} min.</li>
+                {% endif %}
+            </ul>
+            <div>
+                {% if request.user.is_staff %}
+                    <div class="mb-2">
+                        <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-outline-secondary">Edit Questions</a>
+                        <a href="{% url 'quizzes:edit_quiz' quiz.id %}" class="btn btn-info btn-sm">Edit Quiz</a>
+                        
+                        {% if quiz.is_archived %}
+                            <form method="post" action="{% url 'quizzes:unarchive_quiz' quiz.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-success btn-sm">Unarchive</button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{% url 'quizzes:archive_quiz' quiz.id %}" class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-warning btn-sm">Archive</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% endif %}
+                
+                {% if not quiz.is_archived %}
+                    <a href="{% url 'quizzes:take_quiz' quiz.id %}" class="btn btn-primary mb-2">Take Quiz</a>
+                {% endif %}
+                <a class="btn btn-secondary" href="{% url 'quizzes:quiz_list_by_period' quiz.grading_period %}">Back to Quizzes</a>
+            </div>
+        </div>
+    </div>
+    <div class="card mt-3">
+        <div class="card-header">Questions</div>
+        <div class="card-body">
+            {% for question in questions %}
+                <div class="mb-4">
+                    <h5>Q{{ forloop.counter }}) {{ question.text }}</h5>
+                    <span class="badge bg-info">{{ question.get_question_type_display }}</span>
+                    <ul>
+                        {% for choice in question.choices.all %}
+                            <li>{{ choice.text }}{% if choice.is_correct %} <span class="badge bg-success">Correct</span>{% endif %}</li>
+                        {% endfor %}
+                    </ul>
+                    {% if question.explanation %}<div class="text-muted">{{ question.explanation }}</div>{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

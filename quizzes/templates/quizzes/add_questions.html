@@ -6,6 +6,12 @@
 <div class="container">
     <h1 class="mb-4">Add Questions to {{ quiz.title }}</h1>
     
+    {% if form.errors %}
+    <div class="alert alert-danger">
+        <strong>Please correct the errors below.</strong>
+    </div>
+    {% endif %}
+    
     <div class="row">
         <div class="col-md-5">
             <div class="card mb-4">
@@ -15,23 +21,68 @@
                 <div class="card-body">
                     <form method="post" id="question-form">
                         {% csrf_token %}
-                        {{ question_form.as_p }}
-                        
-                        <h6 class="mt-4">Answers</h6>
-                        {{ answer_formset.management_form }}
-                        {% for form in answer_formset %}
-                            <div class="answer-form mb-3 p-2 border rounded">
-                                {{ form.id }}
-                                <div class="form-check mb-2">
-                                    {{ form.is_correct }}
-                                    <label class="form-check-label" for="{{ form.is_correct.id_for_label }}">
-                                        Correct Answer
-                                    </label>
-                                </div>
-                                {{ form.text }}
-                                {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                        {% for field in question_form %}
+                            <div class="form-group mb-3">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger">
+                                        {% for error in field.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
                             </div>
                         {% endfor %}
+                        
+                        <div id="identification-answer-section" style="display: none;">
+                            <label for="id_correct_answer">Correct Answer<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="correct_answer" id="id_correct_answer" maxlength="500" autocomplete="off" value="{{ request.POST.correct_answer|default:'' }}">
+                        </div>
+                        
+                        <div id="answer-formset-section">
+                            <h6 class="mt-4">Answers</h6>
+                            {% if answer_formset.non_form_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in answer_formset.non_form_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {{ answer_formset.management_form }}
+                            <div id="answers-container">
+                                {% for form in answer_formset %}
+                                    <div class="answer-form mb-3 p-2 border rounded {% if form.errors %}border-danger{% endif %}">
+                                        {{ form.id }}
+                                        <div class="form-check mb-2">
+                                            {{ form.is_correct }}
+                                            <label class="form-check-label" for="{{ form.is_correct.id_for_label }}">
+                                                Correct Answer
+                                            </label>
+                                        </div>
+                                        {{ form.text }}
+                                        {% if form.text.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.text.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.is_correct.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.is_correct.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                         
                         <button type="submit" class="btn btn-primary">Add Question</button>
                     </form>
@@ -53,6 +104,7 @@
                                 <div>
                                     <strong>Q{{ forloop.counter }}:</strong> 
                                     {{ question.text|truncatewords:10 }}
+                                    <span class="badge bg-info ms-2">{{ question.get_question_type_display }}</span>
                                     <span class="badge bg-secondary ms-2">{{ question.points }} pt{{ question.points|pluralize }}</span>
                                 </div>
                                 <div>
@@ -71,6 +123,9 @@
                                     </span>
                                 {% endfor %}
                             </div>
+                            {% if question.explanation %}
+                                <div class="mt-2 small text-muted">{{ question.explanation }}</div>
+                            {% endif %}
                         </div>
                         {% empty %}
                         <div class="alert alert-info">No questions added yet.</div>
@@ -85,6 +140,79 @@
 
 {% block js %}
 <script>
+// UI logic for handling different question types
+function updateAnswerSection() {
+    const qtype = document.getElementById('id_question_type').value;
+    const answerSection = document.getElementById('answer-formset-section');
+    const identificationSection = document.getElementById('identification-answer-section');
+    
+    // Clear any previous error messages when changing question type
+    document.querySelectorAll('.text-danger').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    if (qtype === 'identification') {
+        // Show identification answer field and hide multiple choice answers
+        answerSection.style.display = 'none';
+        identificationSection.style.display = 'block';
+    } else if (qtype === 'true_false') {
+        // Hide identification answer field for true/false questions
+        identificationSection.style.display = 'none';
+        // For true/false, preset two choices: True and False
+        answerSection.style.display = 'block';
+        const container = document.getElementById('answers-container');
+        
+        // Save the management form
+        const managementForm = document.querySelector('#answer-formset-section .management-form');
+        
+        container.innerHTML = '';
+        
+        // True option
+        const trueDiv = document.createElement('div');
+        trueDiv.className = 'answer-form mb-3 p-2 border rounded';
+        trueDiv.innerHTML = `
+            <input type="hidden" name="answers-0-id" id="id_answers-0-id">
+            <div class="form-check mb-2">
+                <input type="checkbox" name="answers-0-is_correct" id="id_answers-0-is_correct" class="form-check-input">
+                <label class="form-check-label" for="id_answers-0-is_correct">Correct Answer</label>
+            </div>
+            <input type="text" name="answers-0-text" value="True" readonly class="form-control" id="id_answers-0-text">
+        `;
+        
+        // False option
+        const falseDiv = document.createElement('div');
+        falseDiv.className = 'answer-form mb-3 p-2 border rounded';
+        falseDiv.innerHTML = `
+            <input type="hidden" name="answers-1-id" id="id_answers-1-id">
+            <div class="form-check mb-2">
+                <input type="checkbox" name="answers-1-is_correct" id="id_answers-1-is_correct" class="form-check-input">
+                <label class="form-check-label" for="id_answers-1-is_correct">Correct Answer</label>
+            </div>
+            <input type="text" name="answers-1-text" value="False" readonly class="form-control" id="id_answers-1-text">
+        `;
+        
+        container.appendChild(trueDiv);
+        container.appendChild(falseDiv);
+        
+        // Update total forms
+        document.getElementById('id_answers-TOTAL_FORMS').value = 2;
+    } else {
+        // Multiple choice questions
+        answerSection.style.display = 'block';
+        identificationSection.style.display = 'none';
+    }
+}
+
+// Initialize the form based on question type
+document.addEventListener('DOMContentLoaded', function() {
+    const questionTypeSelect = document.getElementById('id_question_type');
+    if (questionTypeSelect) {
+        questionTypeSelect.addEventListener('change', updateAnswerSection);
+        // Initialize on page load
+        updateAnswerSection();
+    }
+});
+
 // Delete question via AJAX
 document.querySelectorAll('.delete-question').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -113,28 +241,42 @@ document.querySelectorAll('.delete-question').forEach(btn => {
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('question-form');
     const totalForms = document.getElementById('id_answers-TOTAL_FORMS');
-    const container = document.querySelector('.card-body');
-    
-    let formNum = parseInt(totalForms.value);
+    const container = document.getElementById('answers-container');
     
     // Add button to add more answers
     const addButton = document.createElement('button');
     addButton.type = 'button';
     addButton.className = 'btn btn-sm btn-outline-primary mt-2';
     addButton.textContent = 'Add Another Answer';
-    container.appendChild(addButton);
+    
+    // Insert the button after the answers container
+    container.parentNode.insertBefore(addButton, container.nextSibling);
     
     addButton.addEventListener('click', function() {
+        // Only add new answers if not in true/false mode
+        const qtype = document.getElementById('id_question_type').value;
+        if (qtype === 'true_false') {
+            alert('True/False questions can only have True and False as answers.');
+            return;
+        }
+        
+        if (qtype === 'identification') {
+            return; // No need for an alert as we now have a dedicated field
+        }
+        
+        let formNum = parseInt(totalForms.value);
+        
         const newForm = document.createElement('div');
         newForm.className = 'answer-form mb-3 p-2 border rounded';
         newForm.innerHTML = `
+            <input type="hidden" name="answers-${formNum}-id" id="id_answers-${formNum}-id">
             <div class="form-check mb-2">
                 <input type="checkbox" name="answers-${formNum}-is_correct" id="id_answers-${formNum}-is_correct" class="form-check-input">
                 <label class="form-check-label" for="id_answers-${formNum}-is_correct">Correct Answer</label>
             </div>
             <input type="text" name="answers-${formNum}-text" class="form-control" id="id_answers-${formNum}-text">
         `;
-        container.insertBefore(newForm, addButton);
+        container.appendChild(newForm);
         formNum++;
         totalForms.value = formNum;
     });

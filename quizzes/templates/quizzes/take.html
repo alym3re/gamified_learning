@@ -19,7 +19,7 @@
                         <h5>Time Remaining: <span id="time-remaining">{% if quiz.time_limit > 0 %}{{ quiz.time_limit }}:00{% else %}No limit{% endif %}</span></h5>
                     </div>
                     <div>
-                        <h5>Questions: {{ quiz.questions.count }}</h5>
+                        <h5>Questions: {{ questions|length }}</h5>
                     </div>
                 </div>
             </div>
@@ -32,22 +32,66 @@
         <div class="card mb-3 question-card">
             <div class="card-header">
                 <h5>Question {{ forloop.counter }}</h5>
+                <span class="badge bg-info">{{ question.get_question_type_display }}</span>
                 <small class="text-muted">{{ question.points }} point{{ question.points|pluralize }}</small>
             </div>
             <div class="card-body">
                 <p class="card-text">{{ question.text }}</p>
                 <div class="answers">
-                    {% for answer in question.answers.all %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" 
-                               name="question_{{ question.id }}" 
-                               id="answer_{{ question.id }}_{{ answer.id }}" 
-                               value="{{ answer.id }}" required>
-                        <label class="form-check-label" for="answer_{{ question.id }}_{{ answer.id }}">
-                            {{ answer.text }}
-                        </label>
-                    </div>
-                    {% endfor %}
+                    {% if question.question_type == "multiple_single" %}
+                        {% for choice in question.choices.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="choice_{{ question.id }}"
+                                   id="answer_{{ question.id }}_{{ choice.id }}"
+                                   value="{{ choice.id }}" required>
+                            <label class="form-check-label" for="answer_{{ question.id }}_{{ choice.id }}">
+                                {{ choice.text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% elif question.question_type == "multiple_multi" %}
+                        {% for choice in question.choices.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   name="choice_{{ question.id }}"
+                                   id="answer_{{ question.id }}_{{ choice.id }}"
+                                   value="{{ choice.id }}">
+                            <label class="form-check-label" for="answer_{{ question.id }}_{{ choice.id }}">
+                                {{ choice.text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% elif question.question_type == "true_false" %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="tf_{{ question.id }}"
+                                   id="tf_{{ question.id }}_true"
+                                   value="True" required>
+                            <label class="form-check-label" for="tf_{{ question.id }}_true">True</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="tf_{{ question.id }}"
+                                   id="tf_{{ question.id }}_false"
+                                   value="False" required>
+                            <label class="form-check-label" for="tf_{{ question.id }}_false">False</label>
+                        </div>
+                    {% elif question.question_type == "identification" %}
+                        <input type="text" class="form-control" name="ident_{{ question.id }}" placeholder="Your answer here..." required>
+                    {% else %}
+                        {% for answer in question.answers.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" 
+                                   name="question_{{ question.id }}" 
+                                   id="answer_{{ question.id }}_{{ answer.id }}" 
+                                   value="{{ answer.id }}" required>
+                            <label class="form-check-label" for="answer_{{ question.id }}_{{ answer.id }}">
+                                {{ answer.text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -87,15 +131,6 @@
     updateTimer();
 {% endif %}
 
-// Warn about unanswered questions
-document.getElementById('quiz-form').addEventListener('submit', function(e) {
-    const unanswered = document.querySelectorAll('.question-card input[type="radio"]:not(:checked)').length;
-    if (unanswered > 0) {
-        if (!confirm(`You have ${unanswered} unanswered question${unanswered > 1 ? 's' : ''}. Are you sure you want to submit?`)) {
-            e.preventDefault();
-        }
-    }
-});
 
 // Prevent accidental navigation
 window.addEventListener('beforeunload', function(e) {

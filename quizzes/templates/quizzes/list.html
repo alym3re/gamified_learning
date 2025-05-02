@@ -1,74 +1,321 @@
+
 {% extends 'base.html' %}
-{% block title %}Quizzes{% endblock %}
+{% block title %}{{ grading_period_display }} Quizzes{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1 class="mb-4">Available Quizzes</h1>
-    
-    {% if not quizzes.exists %}
-        <div class="alert alert-info">No quizzes available at the moment.</div>
-    {% else %}
-        <div class="row">
-            {% for quiz in quizzes %}
-            <div class="col-md-6 mb-4">
-                <div class="card quiz-card">
-                    <div class="card-header bg-primary text-white">
-                        <h5>{{ quiz.title }}</h5>
+<div class="container quizzes-container pt-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold text-primary" style="font-size:2.5rem; letter-spacing:0.5px;">{{ grading_period_display }} Quizzes</h2>
+        </div>
+        {% if user.is_staff %}
+        <div class="col-auto d-flex align-items-center">
+            <a href="{% url 'quizzes:upload_quiz' %}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+                <i class="bi bi-plus-lg me-2" style="font-size:1.5rem;"></i>
+                <span style="font-size:1.17rem;">Add Quiz</span>
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        {% for quiz in page_obj %}
+            {% if not quiz.is_archived %}
+            <div class="col-12 col-md-6 col-lg-4 mb-4">
+                <div class="quiz-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0">
+                    {% if quiz.locked and not user.is_staff %}
+                    <div class="locked-overlay d-flex flex-column align-items-center justify-content-center">
+                        <i class="bi bi-lock-fill mb-3 theme-danger" style="font-size:2.8rem;"></i>
+                        <span class="locked-text">Locked</span>
                     </div>
-                    <div class="card-body">
-                        <p>{{ quiz.description|truncatewords:20 }}</p>
-                        <ul class="list-group list-group-flush mb-3">
-                            <li class="list-group-item">Questions: {{ quiz.question_count }}</li>
-                            {% if quiz.time_limit > 0 %}
-                                <li class="list-group-item">Time Limit: {{ quiz.time_limit }} minutes</li>
+                    {% endif %}
+                    {% if quiz.thumbnail %}
+                        <img src="{{ quiz.thumbnail.url }}"
+                             class="quiz-thumbnail card-img-top"
+                             alt="{{ quiz.title }}"
+                             style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover;"/>
+                    {% else %}
+                        <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
+                             style="height:16rem; border-radius:14px 14px 0 0;">
+                            <i class="bi bi-question-circle theme-muted" style="font-size:3.5rem;"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
+                        <div class="period-status position-absolute top-0 end-0 m-3">
+                            {% if quiz.locked %}
+                                <i class="bi bi-lock-fill theme-danger" title="Locked" style="font-size:1.6rem;"></i>
+                            {% else %}
+                                <i class="bi bi-unlock-fill theme-success" title="Unlocked" style="font-size:1.6rem;"></i>
                             {% endif %}
-                            <li class="list-group-item">Passing Score: {{ quiz.passing_score }}%</li>
-                        </ul>
-                        <a href="{% url 'quizzes:take_quiz' quiz.id %}" class="btn btn-primary">Start Quiz</a>
-                        {% if request.user.is_staff %}
-                            <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-outline-secondary">Edit Questions</a>
+                        </div>
+                        <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem;">{{ quiz.title }}</h4>
+                        <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem;">
+                            {{ quiz.description|truncatewords:20 }}
+                        </p>
+                        <div class="d-flex justify-content-between w-100 mb-3" style="font-size:1.14rem;">
+                            <span>
+                                <i class="bi bi-list-ol me-1"></i>{{ quiz.question_count }}
+                                <span class="theme-muted">Questions</span>
+                            </span>
+                            <span>
+                                <i class="bi bi-eye me-1"></i>{{ quiz.view_count }}
+                                <span class="theme-muted">Views</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-between">
+                        {% if user.is_staff %}
+                            <div class="btn-icon-group w-100 d-flex justify-content-center gap-2">
+                                <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-action-icon btn-view" title="View Quiz" data-bs-toggle="tooltip">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-action-icon btn-edit" title="Edit Questions" data-bs-toggle="tooltip">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                <form method="post"
+                                      action="{% if quiz.locked %}{% url 'quizzes:unlock_quiz' quiz.id %}{% else %}{% url 'quizzes:lock_quiz' quiz.id %}{% endif %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit"
+                                      class="btn btn-action-icon {% if quiz.locked %}btn-unlock{% else %}btn-lock{% endif %}"
+                                      title="{% if quiz.locked %}Unlock Quiz{% else %}Lock Quiz{% endif %}" data-bs-toggle="tooltip">
+                                        <i class="bi {% if quiz.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %}"></i>
+                                    </button>
+                                </form>
+                                <form method="post"
+                                      action="{% url 'quizzes:archive_quiz' quiz.id %}?next={% url 'quizzes:quiz_list_by_period' quiz.grading_period %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-action-icon btn-archive" title="Archive Quiz" data-bs-toggle="tooltip">
+                                        <i class="bi bi-archive"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        {% else %}
+                            <a href="{% url 'quizzes:take_quiz' quiz.id %}"
+                               class="btn btn-take-quiz btn-lg flex-fill"
+                               style="font-size:1.17rem;"
+                               {% if quiz.locked %}disabled{% endif %}>
+                                <i class="bi bi-box-arrow-in-right me-1"></i> Take Quiz
+                            </a>
                         {% endif %}
                     </div>
                 </div>
             </div>
+            {% endif %}
+        {% empty %}
+        <div class="col-12">
+            <div class="alert alert-info" style="font-size:1.18rem; padding:1.2rem 1.6rem;">
+                No quizzes found for this grading period.
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if user.is_staff %}
+    <!-- Archived Quizzes Container -->
+    <div class="mt-5">
+        <h3 class="fw-bold text-secondary mb-4" style="font-size:2rem;">Archived Quizzes</h3>
+        <div class="row">
+            {% for quiz in page_obj %}
+            {% if quiz.is_archived %}
+            <div class="col-12 col-md-6 col-lg-4 mb-4">
+                <div class="quiz-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0 bg-light">
+                    {% if quiz.thumbnail %}
+                        <img src="{{ quiz.thumbnail.url }}"
+                             class="quiz-thumbnail card-img-top"
+                             alt="{{ quiz.title }}"
+                             style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover; opacity:0.7;"/>
+                    {% else %}
+                        <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
+                             style="height:16rem; border-radius:14px 14px 0 0;">
+                            <i class="bi bi-question-circle theme-muted" style="font-size:3.5rem; opacity:0.7;"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
+                        <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem; opacity:0.7;">{{ quiz.title }}</h4>
+                        <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem; opacity:0.7;">
+                            {{ quiz.description|truncatewords:20 }}
+                        </p>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-center">
+                        <div class="btn-icon-group w-100 d-flex justify-content-center gap-2">
+                            <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-action-icon btn-view" title="View Quiz" data-bs-toggle="tooltip">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                            <form method="post"
+                                  action="{% url 'quizzes:unarchive_quiz' quiz.id %}?next={% url 'quizzes:quiz_list_by_period' quiz.grading_period %}"
+                                  class="d-inline">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-action-icon btn-unarchive" title="Unarchive Quiz" data-bs-toggle="tooltip">
+                                    <i class="bi bi-arrow-up-circle"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             {% endfor %}
         </div>
+    </div>
     {% endif %}
-    
-    {% if attempts.exists %}
-        <h2 class="mt-5 mb-3">Your Quiz History</h2>
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Quiz</th>
-                        <th>Date Taken</th>
-                        <th>Score</th>
-                        <th>Result</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for attempt in attempts %}
-                    <tr>
-                        <td>{{ attempt.quiz.title }}</td>
-                        <td>{{ attempt.start_time|date:"M d, Y H:i" }}</td>
-                        <td>{{ attempt.score|floatformat:1 }}%</td>
-                        <td>
-                            {% if attempt.passed %}
-                                <span class="badge bg-success">Passed</span>
-                            {% else %}
-                                <span class="badge bg-danger">Failed</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'quizzes:quiz_results' attempt.id %}" class="btn btn-sm btn-outline-primary">View Results</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+
+    {% if page_obj.has_other_pages %}
+    <nav aria-label="Quizzes pagination" class="mt-5">
+        <ul class="pagination justify-content-center">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link btn-lg" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+            {% for num in page_obj.paginator.page_range %}
+            {% if page_obj.number == num %}
+            <li class="page-item active"><span class="page-link btn-lg">{{ num }}</span></li>
+            {% else %}
+            <li class="page-item">
+                <a class="page-link btn-lg" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link btn-lg" href="?page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
     {% endif %}
 </div>
+<style>
+.locked-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(248,244,242,0.97);
+    z-index: 10;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+.locked-overlay .theme-danger,
+.locked-text {
+    color: var(--danger-color);
+}
+.locked-text {
+    font-weight: 600;
+    font-size: 2rem;
+    letter-spacing: 1px;
+}
+.theme-success {
+    color: var(--success-color) !important;
+}
+.theme-danger {
+    color: var(--danger-color) !important;
+}
+
+.btn-icon-group .btn-action-icon, .btn-icon-group form .btn-action-icon {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    margin-right: 0.23rem;
+    padding: 0;
+    border-radius: 8px !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.32rem;
+    background: #e9e9e9;
+    color: #333;
+    border: none;
+    box-shadow: none;
+    transition: background 0.18s, color 0.09s;
+    position: relative;
+}
+
+.btn-action-icon:focus, .btn-action-icon:active {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--primary-color, #2779e2)50;
+}
+
+/* Hover effects for explicit actions */
+.btn-view:hover, .btn-view:focus {
+    background: var(--primary-color, #2779e2);
+    color: #fff;
+}
+.btn-edit:hover, .btn-edit:focus {
+    background: var(--secondary-color, #38b6ff);
+    color: #fff;
+}
+.btn-lock:hover, .btn-lock:focus { 
+    background: #ef4444;  /* Red for lock */
+    color: #fff;
+}
+.btn-unlock:hover, .btn-unlock:focus { 
+    background: #22c55e;  /* Green for unlock */
+    color: #fff;
+}
+.btn-archive:hover, .btn-archive:focus  {
+    background: #c28801; /* Gold for archive */
+    color: #fff;
+}
+.btn-unarchive:hover, .btn-unarchive:focus {
+    background: #15803d; /* Green for unarchive */
+    color: #fff;
+}
+.btn-action-icon[disabled] { opacity: 0.55; }
+
+.btn-take-quiz {
+    background: #762730; /* maroon */
+    color: #fff !important;
+    border: none;
+    box-shadow: none;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    transition: background 0.12s, color 0.12s;
+}
+.btn-take-quiz:hover, .btn-take-quiz:focus {
+    background: #5a0000; /* darker maroon on hover */
+    color: #fff !important;
+}
+
+@media (max-width: 991px) {
+    .btn-icon-group .btn-action-icon {
+        margin-bottom: 0.35rem;
+    }
+}
+
+.btn-theme-primary {
+    background: #762730;
+    color: #ffffff !important;
+    border: none;
+    box-shadow: none;
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: .01em;
+    transition: background 0.1s;
+    padding: 0.85rem 1.3rem;
+    border:rgb(255, 255, 255) 2px solid;
+}
+
+
+.btn-theme-primary:hover {
+    background: #ffffff !important ;
+    color: #762730 !important; 
+    border: #762730 2px solid;
+}
+
+</style>
+<script>
+    // Enable Bootstrap tooltips for admin icons
+    document.addEventListener("DOMContentLoaded", function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+          return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+    });
+</script>
 {% endblock %}

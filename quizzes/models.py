@@ -2,9 +2,27 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.text import slugify
+
+GRADING_PERIOD_CHOICES = [
+    ('prelim', 'Prelim'),
+    ('midterm', 'Midterm'),
+    ('prefinal', 'Prefinal'),
+    ('final', 'Final'),
+]
+
+QUESTION_TYPE_CHOICES = [
+    ('multiple_choice', 'Multiple Choice'),
+    ('true_false', 'True/False'),
+    ('identification', 'Identification'),
+]
+
+def quiz_thumbnail_path(instance, filename):
+    return f'quiz_thumbnails/quiz_{instance.id}/{filename}'
 
 class Quiz(models.Model):
     title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
     description = models.TextField(blank=True)
     created_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -18,11 +36,28 @@ class Quiz(models.Model):
         default=70
     )
     is_active = models.BooleanField(default=True)
+    is_featured = models.BooleanField(default=False)
+    is_archived = models.BooleanField(default=False)
+    locked = models.BooleanField(default=False, help_text="Lock this quiz for non-admin users")
     shuffle_questions = models.BooleanField(default=False)
     show_correct_answers = models.BooleanField(
         help_text="Show correct answers after submission",
         default=True
     )
+    grading_period = models.CharField(
+        max_length=10, 
+        choices=GRADING_PERIOD_CHOICES,
+        default='prelim'
+    )
+    lesson = models.ForeignKey(
+        'lessons.Lesson', 
+        on_delete=models.SET_NULL, 
+        related_name='quizzes',
+        null=True, 
+        blank=True
+    )
+    thumbnail = models.ImageField(upload_to=quiz_thumbnail_path, blank=True, null=True)
+    view_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name_plural = "quizzes"
@@ -32,7 +67,22 @@ class Quiz(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        return reverse('quiz_detail', kwargs={'pk': self.pk})
+        return reverse('quiz_detail', kwargs={'slug': self.slug})
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            original_slug = slugify(self.title)
+            slug = original_slug
+            num = 1
+            while Quiz.objects.filter(slug=slug).exists():
+                slug = f"{original_slug}-{num}"
+                num += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def increment_view_count(self):
+        self.view_count += 1
+        self.save(update_fields=["view_count"])
 
     def question_count(self):
         return self.questions.count()
@@ -40,15 +90,26 @@ class Quiz(models.Model):
 class Question(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
     text = models.TextField()
+    question_type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES, default='multiple_choice')
     explanation = models.TextField(blank=True)
     points = models.PositiveIntegerField(default=1)
     order = models.PositiveIntegerField(default=0)
-
+    
     class Meta:
         ordering = ['order']
 
     def __str__(self):
-        return f"{self.text[:50]}..." if len(self.text) > 50 else self.text
+        label = dict(QUESTION_TYPE_CHOICES).get(self.question_type, self.question_type)
+        return f"[{label}] {self.text[:50]}..." if len(self.text) > 50 else f"[{label}] {self.text}"
+    
+    def is_multiple_choice(self):
+        return self.question_type == 'multiple_choice'
+    
+    def is_true_false(self):
+        return self.question_type == 'true_false'
+    
+    def is_identification(self):
+        return self.question_type == 'identification'
 
 class Answer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
@@ -89,8 +150,78 @@ class QuizAttempt(models.Model):
 class UserAnswer(models.Model):
     attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE, related_name='user_answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='quiz_user_answers')
-    selected_answer = models.ForeignKey(Answer, on_delete=models.CASCADE, null=True, blank=True, related_name='quiz_user_selected_answers')
+    # For multiple choice questions
+    selected_answers = models.ManyToManyField(Answer, blank=True, related_name='quiz_user_selected_answers')
+    # For identification and true/false
+    text_answer = models.TextField(blank=True, null=True)
     is_correct = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('attempt', 'question')
+        
+    def check_answer(self):
+        """Check if the user's answer is correct based on question type"""
+        question = self.question
+        
+        if question.is_multiple_choice():
+            # For multiple choice, check if selected answers match correct answers
+            correct_answers = set(question.answers.filter(is_correct=True).values_list('id', flat=True))
+            selected = set(self.selected_answers.values_list('id', flat=True))
+            self.is_correct = correct_answers == selected
+            
+        elif question.is_true_false():
+            # For true/false, check if selected answer matches the correct one
+            correct_answer = question.answers.filter(is_correct=True).first()
+            selected = self.selected_answers.first()  # Assume only one is selected
+            
+            if correct_answer and selected:
+                self.is_correct = (selected.id == correct_answer.id)
+            elif self.text_answer and correct_answer:
+                # Compare text if selected is not set, but text_answer is
+                correct_text = correct_answer.text.lower().strip()
+                user_text = self.text_answer.lower().strip()
+                
+                # Check if both are true or both are false
+                is_correct_true = correct_text in ['true', 't', 'yes', 'y'] and user_text in ['true', 't', 'yes', 'y']
+                is_correct_false = correct_text in ['false', 'f', 'no', 'n'] and user_text in ['false', 'f', 'no', 'n']
+                self.is_correct = is_correct_true or is_correct_false
+            else:
+                self.is_correct = False
+                
+        elif question.is_identification():
+            # For identification, check if text answer matches any correct answer
+            correct_answers = [a.text.lower().strip() for a in question.answers.filter(is_correct=True)]
+            if self.text_answer:
+                user_ans = self.text_answer.lower().strip()
+                self.is_correct = user_ans in correct_answers
+            else:
+                self.is_correct = False
+                
+        self.save()
+        return self.is_correct
+
+
+class LockedQuizPeriod(models.Model):
+    """Tracks which grading periods for quizzes are locked (for non-staff users)."""
+    period = models.CharField(max_length=10, choices=GRADING_PERIOD_CHOICES, unique=True)
+    locked = models.BooleanField(default=True)
+    locked_date = models.DateTimeField(auto_now_add=True)
+    last_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Locked Quiz Period"
+        verbose_name_plural = "Locked Quiz Periods"
+        ordering = ['period']
+
+    def __str__(self):
+        return f"{self.get_period_display()} - {'Locked' if self.locked else 'Unlocked'}"
+    
+    @classmethod
+    def is_period_locked(cls, period):
+        """Check if a specific grading period is locked"""
+        try:
+            period_obj = cls.objects.get(period=period)
+            return period_obj.locked
+        except cls.DoesNotExist:
+            # Default to locked if no entry exists
+            return True
