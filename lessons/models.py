@@ -16,7 +16,7 @@ class Lesson(models.Model):
     grading_period = models.CharField(
         max_length=10, 
         choices=GRADING_PERIOD_CHOICES,
-        default='prelim'  # Default moved here
+        default='prelim'
     )
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
@@ -30,6 +30,10 @@ class Lesson(models.Model):
     is_featured = models.BooleanField(default=False)
     view_count = models.PositiveIntegerField(default=0)
 
+    is_archived = models.BooleanField(default=False)  # New field for archiving
+    # Optional: field for HTML-converted doc/docx. Needs backend job to populate!
+    html_content = models.TextField(blank=True, null=True, help_text="Auto-generated HTML from .docx if available")
+
     class Meta:
         ordering = ['-upload_date']
 
@@ -37,6 +41,17 @@ class Lesson(models.Model):
         return self.title
 
     def save(self, *args, **kwargs):
+        try:
+            # Only clear html_content if this is NOT a new object and file has changed
+            old = self.__class__.objects.get(pk=self.pk)
+            old_file = old.file
+        except (self.__class__.DoesNotExist, ValueError, TypeError):
+            old_file = None
+
+        # If the file field has changed (and it's not a new object), reset html_content
+        if old_file and old_file.name != self.file.name:
+            self.html_content = ''
+
         if not self.slug or self.__class__.objects.filter(slug=self.slug).exclude(pk=self.pk).exists():
             original_slug = slugify(self.title)
             slug = original_slug

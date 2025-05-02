@@ -12,6 +12,9 @@ urlpatterns = [
     path('<slug:slug>/edit/', LessonUpdateView.as_view(), name='lesson_edit'),
     path('<slug:slug>/complete/', views.mark_completed, name='mark_completed'),
     path('<slug:slug>/download/', views.download_lesson_file, name='download_lesson_file'),
+    path('<slug:slug>/archive/', views.archive_lesson, name='lesson_archive'),
+    path('<slug:slug>/unarchive/', views.unarchive_lesson, name='lesson_unarchive'),
+    path('<slug:slug>/read/', views.read_file, name='read_file'),
     path('admin/lesson-access/', views.admin_lesson_access_report, name='lesson_access_report'),
     path('admin/period-lock-toggle/<str:grading_period>/', views.toggle_period_lock, name='toggle_period_lock'),
 ]

@@ -9,25 +9,27 @@ class LessonForm(forms.ModelForm):
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
             'grading_period': forms.Select(attrs={'class': 'form-select'}),
-            'file': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'file': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.doc,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint'
+            }),
             'thumbnail': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
-
-    class Meta:
-        model = Lesson
-        fields = [
-            'title', 'description', 'file', 'thumbnail', 'grading_period', 'is_featured'
-        ]
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 7}),
         }
         labels = {
             'description': 'Description (Markdown supported)',
             'is_featured': 'Feature this lesson'
         }
+        help_texts = {
+            'file': 'Only .pdf, .doc, .docx, .pptx files are allowed.',
+            'thumbnail': 'Optional. Recommended size: 800x450px'
+        }
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['file'].required = True
-        self.fields['thumbnail'].help_text = "Optional. Recommended size: 800x450px"
+    def clean_file(self):
+        file = self.cleaned_data.get('file')
+        allowed_exts = ['.pdf', '.doc', '.docx', '.pptx']
+        import os
+        ext = os.path.splitext(file.name)[1].lower()
+        if ext not in allowed_exts:
+            raise forms.ValidationError("Only PDF, Word (.doc/.docx), and PowerPoint (.pptx) files are allowed.")
+        return file

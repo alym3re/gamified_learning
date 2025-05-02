@@ -21,8 +21,9 @@
 
     <div class="row">
         {% for lesson in page_obj %}
-        <div class="col-12 col-md-6 col-lg-4 mb-4">
-            <div class="lesson-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0">
+            {% if not lesson.is_archived %}
+            <div class="col-12 col-md-6 col-lg-4 mb-4">
+                <div class="lesson-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0">
                 {% if lesson.thumbnail %}
                     <img src="{{ lesson.thumbnail.url }}"
                          class="lesson-thumbnail card-img-top"
@@ -51,7 +52,8 @@
                     </span>
                 </div>
             </div>
-        </div>
+            </div>
+            {% endif %}
         {% empty %}
         <div class="col-12">
             <div class="alert alert-info" style="font-size:1.18rem; padding:1.2rem 1.6rem;">
@@ -60,6 +62,50 @@
         </div>
         {% endfor %}
     </div>
+
+    {% if user.is_staff %}
+  
+    <!-- Archived Lessons Container -->
+    <div class="mt-5">
+        <h3 class="fw-bold text-secondary mb-4" style="font-size:2rem;">Archived Lessons</h3>
+        <div class="row">
+            {% for lesson in page_obj %}
+            {% if lesson.is_archived %}
+            <div class="col-12 col-md-6 col-lg-4 mb-4">
+                <div class="lesson-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0 bg-light">
+                    {% if lesson.thumbnail %}
+                        <img src="{{ lesson.thumbnail.url }}"
+                             class="lesson-thumbnail card-img-top"
+                             alt="{{ lesson.title }}"
+                             style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover; opacity:0.7;"/>
+                    {% else %}
+                        <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
+                             style="height:16rem; border-radius:14px 14px 0 0;">
+                            <i class="bi bi-file-earmark-text theme-muted" style="font-size:3.5rem; opacity:0.7;"></i>
+                        </div>
+                    {% endif %}
+                    <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
+                        <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem; opacity:0.7;">{{ lesson.title }}</h4>
+                        <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem; opacity:0.7;">
+                            {{ lesson.description|truncatewords:20 }}
+                        </p>
+                    </div>
+                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-center">
+                        <form method="post" action="{% url 'lessons:lesson_unarchive' lesson.slug %}" class="w-100">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-lg flex-fill" style="font-size:1.17rem;">
+                                <i class="bi bi-arrow-up-circle me-1"></i> Unarchive Lesson
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
 
     {% if page_obj.has_other_pages %}
     <nav aria-label="Lessons pagination" class="mt-5">

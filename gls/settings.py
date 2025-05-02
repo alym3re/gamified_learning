@@ -158,3 +158,6 @@ PWA_APP_ICONS = [
         'sizes': '192x192'
     }
 ]
+
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+
