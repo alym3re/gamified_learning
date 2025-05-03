@@ -270,7 +270,7 @@ def take_quiz(request, quiz_id):
             
             for question in quiz.questions.all():
                 question_type = question.question_type
-                user_answer_obj, _ = UserAnswer.objects.get_or_create(attempt=attempt, question=question)
+                user_answer_obj, _ = UserAnswer.objects.get_or_create(attempt=user_attempt, question=question)
                 user_answer_obj.is_correct = False
                 
                 if question_type.startswith('multiple'):
@@ -307,14 +307,14 @@ def take_quiz(request, quiz_id):
                     total_score += question.points
                 total_points += question.points
             
-            attempt.completed = True
-            attempt.end_time = timezone.now()
-            attempt.score = (total_score / total_points) * 100 if total_points > 0 else 0
-            attempt.passed = attempt.score >= quiz.passing_score
-            attempt.save()
+            user_attempt.completed = True
+            user_attempt.end_time = timezone.now()
+            user_attempt.score = (total_score / total_points) * 100 if total_points > 0 else 0
+            user_attempt.passed = user_attempt.score >= quiz.passing_score
+            user_attempt.save()
             
             messages.success(request, 'Quiz submitted successfully!')
-            return redirect('quizzes:quiz_results', attempt_id=attempt.id)
+            return redirect('quizzes:quiz_results', attempt_id=user_attempt.id)
     
     questions = quiz.questions.all().prefetch_related('answers')
     if quiz.shuffle_questions:
