@@ -26,8 +26,15 @@ def grading_period_list(request):
         quiz_count = quizzes.count()
         view_count = quizzes.aggregate(total_views=models.Sum("view_count"))["total_views"] or 0
 
+        # Progress: How many quizzes in this period has the user completed?
         progress_percent = 0
-        # Could add user progress tracking for quizzes if user is authenticated
+        user_completed = 0
+        if user:
+            done_ids = QuizAttempt.objects.filter(
+                user=user, quiz__grading_period=period_value, completed=True
+            ).values_list("quiz_id", flat=True)
+            user_completed = quizzes.filter(id__in=done_ids).count()
+            progress_percent = (user_completed / quiz_count) * 100 if quiz_count > 0 else 0
         
         locked = locked_periods.get(period_value, False)
 
@@ -38,6 +45,7 @@ def grading_period_list(request):
             "quiz_count": quiz_count,
             "view_count": view_count,
             "progress_percent": progress_percent,
+            "completed_count": user_completed,
             "quizzes": quizzes_for_period,
             "locked": locked,
         }
@@ -63,12 +71,20 @@ def quiz_list_by_period(request, grading_period):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    # Only pass in the user's info (Django templates can always get user from request, but pass for clarity/consistency)
+    completed_quiz_ids = set()
+    if request.user.is_authenticated:
+        completed_quiz_ids = set(
+            QuizAttempt.objects.filter(
+                user=request.user, quiz__grading_period=grading_period, completed=True
+            ).values_list('quiz_id', flat=True)
+        )
+    
     context = {
         'grading_period': grading_period,
         'grading_period_display': period_display,
         'page_obj': page_obj,
         'user': request.user,
+        'completed_quiz_ids': completed_quiz_ids,  # let template display "Completed"
     }
     return render(request, "quizzes/list.html", context)
 
@@ -83,6 +99,13 @@ def view_quiz(request, quiz_id):
     if hasattr(quiz, 'increment_view_count'):
         quiz.increment_view_count()
     questions = quiz.questions.all().prefetch_related('answers')
+    
+    # Check if current user has completed this quiz
+    completed = False
+    attempt = None
+    if request.user.is_authenticated:
+        attempt = QuizAttempt.objects.filter(user=request.user, quiz=quiz).first()
+        completed = attempt.completed if attempt else False
     
     # Leaderboard: all completed attempts, ordered highest score, shortest duration, latest first
     leaderboard_attempts = (
@@ -106,6 +129,8 @@ def view_quiz(request, quiz_id):
         'quiz': quiz,
         'questions': questions,
         'leaderboard_page_obj': leaderboard_page_obj,
+        'completed': completed,  # For template logic to block attempt or show DONE
+        'user_attempt': attempt,
     }
     
     if quiz.locked and not request.user.is_staff:
@@ -225,18 +250,14 @@ def add_quiz_questions(request, quiz_id):
 def take_quiz(request, quiz_id):
     quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True, is_archived=False)
     
-    # Check for existing incomplete attempt
-    attempt = QuizAttempt.objects.filter(
-        user=request.user,
-        quiz=quiz,
-        completed=False
-    ).first()
-    
-    if not attempt:
-        attempt = QuizAttempt.objects.create(
-            user=request.user,
-            quiz=quiz
-        )
+    # Restrict to ONE complete attempt per user
+    # If attempt exists for user & quiz, block further access.
+    user_attempt = QuizAttempt.objects.filter(user=request.user, quiz=quiz).first()
+    if user_attempt and user_attempt.completed:
+        messages.info(request, "You have already completed this quiz. You cannot take it again.")
+        return redirect('quizzes:view_quiz', quiz_id=quiz.id)
+    elif user_attempt is None:
+        user_attempt = QuizAttempt.objects.create(user=request.user, quiz=quiz)
     
     if quiz.locked and not request.user.is_staff:
         messages.error(request, "This quiz is locked.")
@@ -302,7 +323,7 @@ def take_quiz(request, quiz_id):
     
     return render(request, 'quizzes/take.html', {
         'quiz': quiz,
-        'attempt': attempt,
+        'attempt': user_attempt,
         'questions': questions,
         'time_limit': quiz.time_limit * 60 if quiz.time_limit > 0 else None
     })

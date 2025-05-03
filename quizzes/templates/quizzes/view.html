@@ -96,7 +96,13 @@
                     </div>
                   
                     {% if not quiz.is_archived and not request.user.is_staff %}
-                        <a href="{% url 'quizzes:take_quiz' quiz.id %}" class="btn btn-primary mb-2">Take Quiz</a>
+                        {% if completed %}
+                            <span class="btn btn-success mb-2 disabled" style="font-size:1.17rem;">
+                              <i class="bi bi-check-circle me-1"></i> Completed
+                            </span>
+                        {% else %}
+                            <a href="{% url 'quizzes:take_quiz' quiz.id %}" class="btn btn-primary mb-2">Take Quiz</a>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
