@@ -8,14 +8,19 @@
         <div class="col">
             <h2 class="fw-bold text-primary" style="font-size:2.5rem; letter-spacing:0.5px;">{{ grading_period_display }} Quizzes</h2>
         </div>
-        {% if user.is_staff %}
         <div class="col-auto d-flex align-items-center">
-            <a href="{% url 'quizzes:upload_quiz' %}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
-                <i class="bi bi-plus-lg me-2" style="font-size:1.5rem;"></i>
-                <span style="font-size:1.17rem;">Add Quiz</span>
-            </a>
+            {% if user.is_staff %}
+                <a href="{% url 'quizzes:upload_quiz' %}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+                    <i class="bi bi-plus-lg me-2" style="font-size:1.5rem;"></i>
+                    <span style="font-size:1.17rem;">Add Quiz</span>
+                </a>
+            {% else %}
+                <a href="{% url 'quizzes:quiz_history' %}?grading_period={{ grading_period }}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+                    <i class="bi bi-clock-history me-2" style="font-size:1.5rem;"></i>
+                    <span style="font-size:1.17rem;">View History</span>
+                </a>
+            {% endif %}
         </div>
-        {% endif %}
     </div>
 
     <div class="row">

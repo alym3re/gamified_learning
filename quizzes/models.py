@@ -138,6 +138,25 @@ class QuizAttempt(models.Model):
         if self.end_time:
             return (self.end_time - self.start_time).total_seconds()
         return None
+        
+    def duration_seconds(self):
+        if self.end_time:
+            return int((self.end_time - self.start_time).total_seconds())
+        return None
+
+    def duration_str(self):
+        seconds = self.duration_seconds()
+        if seconds is None:
+            return "Not completed"
+        minutes, sec = divmod(seconds, 60)
+        if minutes and sec:
+            return f"{minutes} minute{'s' if minutes != 1 else ''} {sec} second{'s' if sec != 1 else ''}"
+        elif minutes:
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
+        elif sec:
+            return f"{sec} second{'s' if sec != 1 else ''}"
+        else:
+            return "0 seconds"
 
     def calculate_score(self):
         correct_answers = self.user_answers.filter(is_correct=True).count()
@@ -150,9 +169,9 @@ class QuizAttempt(models.Model):
 class UserAnswer(models.Model):
     attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE, related_name='user_answers')
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='quiz_user_answers')
-    # For multiple choice questions
+    # For multiple choice and true/false questions
     selected_answers = models.ManyToManyField(Answer, blank=True, related_name='quiz_user_selected_answers')
-    # For identification and true/false
+    # For identification questions
     text_answer = models.TextField(blank=True, null=True)
     is_correct = models.BooleanField(default=False)
 
@@ -163,30 +182,11 @@ class UserAnswer(models.Model):
         """Check if the user's answer is correct based on question type"""
         question = self.question
         
-        if question.is_multiple_choice():
-            # For multiple choice, check if selected answers match correct answers
+        if question.is_multiple_choice() or question.is_true_false():
+            # For multiple choice and true/false, check if selected answers match correct answers
             correct_answers = set(question.answers.filter(is_correct=True).values_list('id', flat=True))
             selected = set(self.selected_answers.values_list('id', flat=True))
             self.is_correct = correct_answers == selected
-            
-        elif question.is_true_false():
-            # For true/false, check if selected answer matches the correct one
-            correct_answer = question.answers.filter(is_correct=True).first()
-            selected = self.selected_answers.first()  # Assume only one is selected
-            
-            if correct_answer and selected:
-                self.is_correct = (selected.id == correct_answer.id)
-            elif self.text_answer and correct_answer:
-                # Compare text if selected is not set, but text_answer is
-                correct_text = correct_answer.text.lower().strip()
-                user_text = self.text_answer.lower().strip()
-                
-                # Check if both are true or both are false
-                is_correct_true = correct_text in ['true', 't', 'yes', 'y'] and user_text in ['true', 't', 'yes', 'y']
-                is_correct_false = correct_text in ['false', 'f', 'no', 'n'] and user_text in ['false', 'f', 'no', 'n']
-                self.is_correct = is_correct_true or is_correct_false
-            else:
-                self.is_correct = False
                 
         elif question.is_identification():
             # For identification, check if text answer matches any correct answer

@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.db import transaction
 from django.forms import inlineformset_factory
 from django.http import JsonResponse, Http404
-from django.core.paginator import Paginator
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import models
 from django.views.decorators.http import require_POST
 from .models import Quiz, Question, Answer, QuizAttempt, UserAnswer, GRADING_PERIOD_CHOICES, QUESTION_TYPE_CHOICES, LockedQuizPeriod
@@ -82,12 +82,32 @@ def view_quiz(request, quiz_id):
     quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True, is_archived=False)
     if hasattr(quiz, 'increment_view_count'):
         quiz.increment_view_count()
-    questions = quiz.questions.all().select_related()
+    questions = quiz.questions.all().prefetch_related('answers')
+    
+    # Leaderboard: all completed attempts, ordered highest score, shortest duration, latest first
+    leaderboard_attempts = (
+        QuizAttempt.objects
+        .filter(quiz=quiz, completed=True)
+        .select_related('user')
+        .order_by('-score', 'end_time', 'start_time')
+    )
+
+    # Pagination for leaderboard (10 per page)
+    page = request.GET.get('leaderboard_page', 1)
+    leaderboard_paginator = Paginator(leaderboard_attempts, 10)
+    try:
+        leaderboard_page_obj = leaderboard_paginator.page(page)
+    except PageNotAnInteger:
+        leaderboard_page_obj = leaderboard_paginator.page(1)
+    except EmptyPage:
+        leaderboard_page_obj = leaderboard_paginator.page(leaderboard_paginator.num_pages)
+    
     context = {
         'quiz': quiz,
         'questions': questions,
+        'leaderboard_page_obj': leaderboard_page_obj,
     }
-    quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True, is_archived=False)
+    
     if quiz.locked and not request.user.is_staff:
         messages.error(request, "This quiz is locked.")
         return redirect('quizzes:grading_period_list')
@@ -217,7 +237,6 @@ def take_quiz(request, quiz_id):
             user=request.user,
             quiz=quiz
         )
-
     
     if quiz.locked and not request.user.is_staff:
         messages.error(request, "This quiz is locked.")
@@ -225,8 +244,6 @@ def take_quiz(request, quiz_id):
     
     if request.method == 'POST':
         with transaction.atomic():
-            correct_answers = 0
-            total_questions = quiz.questions.count()
             total_points = 0
             total_score = 0
             
@@ -237,25 +254,29 @@ def take_quiz(request, quiz_id):
                 
                 if question_type.startswith('multiple'):
                     choice_ids = request.POST.getlist(f'question_{question.id}')
+                    # Limit to one answer for single choice questions
                     if question_type == 'multiple_single' and len(choice_ids) > 1:
                         choice_ids = choice_ids[:1]
                     
                     selected_answers = Answer.objects.filter(question=question, id__in=choice_ids)
                     user_answer_obj.selected_answers.set(selected_answers)
-                    user_answer_obj.answer_text = None
+                    user_answer_obj.text_answer = None  # Clear text field for MCQ
                 
                 elif question_type == 'true_false':
-                    answer_id = request.POST.get(f'question_{question.id}')
+                    answer_val = request.POST.get(f'question_{question.id}')
                     user_answer_obj.selected_answers.clear()
-                    user_answer_obj.answer_text = None
-                    if answer_id:
-                        selected_answer = Answer.objects.filter(id=answer_id).first()
+                    user_answer_obj.text_answer = None
+                    
+                    if answer_val and answer_val.isdigit():
+                        selected_answer = Answer.objects.filter(pk=answer_val, question=question).first()
                         if selected_answer:
                             user_answer_obj.selected_answers.add(selected_answer)
+                    elif answer_val:
+                        user_answer_obj.text_answer = answer_val
                 
                 elif question_type == 'identification':
                     answer_text = request.POST.get(f'question_{question.id}', '').strip()
-                    user_answer_obj.answer_text = answer_text
+                    user_answer_obj.text_answer = answer_text
                     user_answer_obj.selected_answers.clear()
                 
                 user_answer_obj.save()
@@ -293,26 +314,15 @@ def quiz_results(request, attempt_id):
         messages.error(request, "This quiz attempt is not completed yet.")
         return redirect('quizzes:grading_period_list')
 
-    user_answer_map = {
-        ua.question_id: ua
-        for ua in attempt.user_answers.select_related('question')
-    }
-
-    
-
-    question_review = []
-    for question in attempt.quiz.questions.all():
-        user_answer = user_answer_map.get(question.id)
-        question_review.append({
-            'question': question,
-            'user_answer': user_answer,
-        })
+    # Select related so we can access user_answer.question easily in template
+    user_answers = attempt.user_answers.select_related('question').all()
 
     return render(request, 'quizzes/results.html', {
         'attempt': attempt,
-        'question_review': question_review,
+        'user_answers': user_answers,
         'show_answers': attempt.quiz.show_correct_answers or attempt.passed or request.user.is_staff
     })
+
 
 @login_required
 def quiz_history(request):
@@ -320,8 +330,15 @@ def quiz_history(request):
         user=request.user,
         completed=True
     ).select_related('quiz').order_by('-start_time')
-    
-    return render(request, 'quizzes/history.html', {'attempts': attempts})
+
+    grading_period = request.GET.get('grading_period')
+    if grading_period:
+        attempts = attempts.filter(quiz__grading_period=grading_period)
+    paginator = Paginator(attempts, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    return render(request, 'quizzes/history.html', {'page_obj': page_obj})
 
 @login_required
 def delete_question(request, quiz_id, question_id):
@@ -352,6 +369,7 @@ def unarchive_quiz(request, quiz_id):
     quiz.is_archived = False
     quiz.save(update_fields=['is_archived'])
     messages.success(request, f'Quiz "{quiz.title}" unarchived.')
+    next_url = request.GET.get('next')
     if next_url:
         return redirect(next_url)
     return redirect('quizzes:view_quiz', quiz_id=quiz.id)

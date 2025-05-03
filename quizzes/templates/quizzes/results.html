@@ -1,113 +1,206 @@
-
 {% extends 'base.html' %}
 {% block title %}Quiz Results - {{ attempt.quiz.title }}{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="card mb-4 {% if attempt.passed %}border-success{% else %}border-danger{% endif %}">
-        <div class="card-header {% if attempt.passed %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
-            <h2>Quiz Results: {{ attempt.quiz.title }}</h2>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Date Taken:</strong> {{ attempt.start_time|date:"M d, Y H:i" }}</p>
-                    <p><strong>Time Spent:</strong> 
-                        {% if attempt.end_time %}
-                            {{ attempt.end_time|timeuntil:attempt.start_time }}
-                        {% else %}
-                            Not completed
-                        {% endif %}
-                    </p>
+<div class="container quiz-view-container pt-5">
+
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Summary Card -->
+            <div class="quiz-card card grading-period-card border-0 shadow-sm mb-5">
+                <div class="card-header {% if attempt.passed %}bg-success text-white{% else %}bg-danger text-white{% endif %} pb-3 pt-4 px-4 border-0">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap">
+                        <h2 class="mb-0 fw-bold" style="font-size:2.1rem;">
+                            Quiz Results: {{ attempt.quiz.title }}
+                        </h2>
+                        <div>
+                            <span class="badge {% if attempt.passed %}bg-success{% else %}bg-danger{% endif %} fs-5 ms-2">
+                                {% if attempt.passed %}Passed{% else %}Failed{% endif %}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6">
-                    <p><strong>Your Score:</strong> {{ attempt.score|floatformat:1 }}%</p>
-                    <p><strong>Passing Score:</strong> {{ attempt.quiz.passing_score }}%</p>
-                    <p><strong>Result:</strong> 
-                        {% if attempt.passed %}
-                            <span class="badge bg-success">Passed</span>
-                        {% else %}
-                            <span class="badge bg-danger">Failed</span>
-                        {% endif %}
-                    </p>
+                <div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <p class="mb-1 theme-muted"><strong>Date Taken:</strong> 
+                                <span class="local-time" data-datetime="{{ attempt.start_time|date:"c" }}">
+                                    {{ attempt.start_time|date:"M d, Y H:i" }}
+                                </span>
+                            </p>
+                            <p class="mb-1 theme-muted"><strong>Time Spent:</strong> {{ attempt.duration_str }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="mb-1 theme-muted"><strong>Your Score:</strong> 
+                                <span class="fw-bold" style="font-size:1.45rem;">{{ attempt.score|floatformat:1 }}%</span>
+                            </p>
+                            <p class="mb-1 theme-muted"><strong>Passing Score:</strong> {{ attempt.quiz.passing_score }}%</p>
+                        </div>
+                    </div>
                 </div>
+            </div>
+
+            <!-- Questions Review Card -->
+            <div class="quiz-card card grading-period-card border-0 shadow-sm mb-5">
+                <div class="card-header bg-white pb-2 pt-3 px-4 border-0">
+                    <h4 class="fw-semibold mb-0" style="font-size:1.35rem;">
+                        <i class="bi bi-question-circle me-2"></i>Question Review
+                    </h4>
+                </div>
+                <div class="card-body p-4">
+                    {% if show_answers %}
+                        {% for ua in user_answers %}
+                            {% with question=ua.question %}
+                                <div class="card mb-4 {% if ua.is_correct %}border-success{% else %}border-danger{% endif %}">
+                                    <div class="card-header bg-light">
+                                        <h5 class="mb-1">Question {{ forloop.counter }}</h5>
+                                        <span class="badge bg-info mb-2">{{ question.get_question_type_display }}</span>
+                                        <div class="mb-1">{{ question.text }}</div>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-1"><strong>Your Answer:</strong>
+                                            {% if ua.selected_answers.all|length %}
+                                                {% for choice in ua.selected_answers.all %}
+                                                    <span class="badge bg-secondary">{{ choice.text }}</span>
+                                                {% endfor %}
+                                            {% elif ua.text_answer %}
+                                                "{{ ua.text_answer }}"
+                                            {% else %}
+                                                <span class="text-muted">No answer given</span>
+                                            {% endif %}
+                                            {% if ua.is_correct %}
+                                                <span class="badge bg-success ms-2">Correct</span>
+                                            {% else %}
+                                                <span class="badge bg-danger ms-2">Incorrect</span>
+                                            {% endif %}
+                                        </p>
+                                        {% if question.explanation %}
+                                            <div class="alert alert-info mt-3 mb-0 p-2">
+                                                <strong>Explanation:</strong> {{ question.explanation }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% endfor %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            Correct answers are not shown for this quiz.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex flex-wrap gap-3 justify-content-between mb-3">
+                <a href="{% url 'quizzes:grading_period_list' %}" class="btn btn-theme-primary btn-lg d-flex align-items-center gap-2 shadow-sm">
+                    <i class="bi bi-arrow-bar-left"></i>
+                    <span>Back to Grading Periods</span>
+                </a>
+                <a href="{% url 'quizzes:quiz_history' %}" class="btn btn-outline-secondary btn-lg d-flex align-items-center gap-2 shadow-sm">
+                    <i class="bi bi-clock-history"></i>
+                    <span>View Your Quiz History</span>
+                </a>
             </div>
         </div>
     </div>
-    
-    {% if show_answers %}
-        <h3 class="mb-3">Question Review</h3>
-        {% for user_answer in user_answers %}
-            {% with question=user_answer.question %}
-                <div class="card mb-3 {% if user_answer.is_correct %}border-success{% else %}border-danger{% endif %}">
-                    <div class="card-header">
-                        <h5>Question {{ forloop.counter }}</h5>
-                        <span class="badge bg-info">{{ question.get_question_type_display }}</span>
-                        <p>{{ question.text }}</p>
-                    </div>
-                    <div class="card-body">
-                        <p><strong>Your Answer:</strong>
-                            {% if question.question_type == 'multiple_single' or question.question_type == 'true_false' %}
-                                {% for choice in user_answer.selected_choices.all %}
-                                    {{ choice.text }}
-                                {% empty %}
-                                    <span class="text-muted">No answer selected</span>
-                                {% endfor %}
-                            {% elif question.question_type == 'multiple_multi' %}
-                                {% for choice in user_answer.selected_choices.all %}
-                                    <span class="badge bg-secondary">{{ choice.text }}</span>
-                                {% empty %}
-                                    <span class="text-muted">No answer(s) selected</span>
-                                {% endfor %}
-                            {% elif question.question_type == 'identification' %}
-                                {% if user_answer.answer_text %}
-                                    "{{ user_answer.answer_text }}"
-                                {% else %}
-                                    <span class="text-muted">No answer given</span>
-                                {% endif %}
-                            {% endif %}
-                            {% if user_answer.is_correct %}
-                                <span class="badge bg-success ms-2">Correct</span>
-                            {% else %}
-                                <span class="badge bg-danger ms-2">Incorrect</span>
-                            {% endif %}
-                        </p>
-                        {% if not user_answer.is_correct %}
-                            <div class="mb-2">
-                                <strong>Correct Answer:</strong>
-                                {% if question.question_type == 'identification' %}
-                                    {% for choice in question.choices.all %}
-                                        {% if choice.is_correct %}
-                                            "{{ choice.text }}"
-                                        {% endif %}
-                                    {% endfor %}
-                                {% else %}
-                                    {% for choice in question.choices.all %}
-                                        {% if choice.is_correct %}
-                                            <span class="badge bg-success">{{ choice.text }}</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                {% endif %}
-                            </div>
-                        {% endif %}
-                        {% if question.explanation %}
-                            <div class="alert alert-info mt-3">
-                                <strong>Explanation:</strong> {{ question.explanation }}
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            {% endwith %}
-        {% endfor %}
-    {% else %}
-        <div class="alert alert-info">
-            Correct answers are not shown for this quiz.
-        </div>
-    {% endif %}
-    
-    <div class="mt-4">
-        <a href="{% url 'quizzes:grading_period_list' %}" class="btn btn-primary">Back to Grading Periods</a>
-        <a href="{% url 'quizzes:quiz_history' %}" class="btn btn-outline-secondary">View Your Quiz History</a>
-    </div>
 </div>
+<style>
+.quiz-card,
+.grading-period-card {
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08),0 1.5px 5px rgba(86, 113, 156,.02);
+    overflow: hidden;
+    transition: box-shadow 0.18s;
+}
+.quiz-card:hover {
+    box-shadow: 0 6px 30px rgba(0,0,0,0.10);
+    transform: translateY(-3px) scale(1.01);
+}
+.theme-muted {
+    color: #888 !important;
+}
+.badge.bg-light {
+    color: #888 !important;
+    border: 1px solid #eee;
+}
+@media (max-width: 767px) {
+    .quiz-card,
+    .grading-period-card {
+        margin-bottom: 2rem;
+    }
+    h2 {
+        font-size: 1.4rem !important;
+    }
+}
+
+/* Button, badge, and alert classes for custom color match */
+.btn-theme-primary {
+    background: var(--primary-color, #762730);
+    color: #fff !important;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.85rem 1.3rem;
+    letter-spacing: .01em;
+    transition: background 0.1s;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-theme-primary:hover, .btn-theme-primary:focus {
+    background: var(--secondary-color, #5a0000);
+    color: #fff !important;
+}
+
+.btn-outline-secondary {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 0.85rem 1.3rem;
+    letter-spacing: .01em;
+    border: 2px solid #888;
+    color: #888 !important;
+    background: #fff;
+    transition: background 0.1s, color 0.1s;
+    display: inline-flex;
+    align-items: center;
+}
+.btn-outline-secondary:hover, .btn-outline-secondary:focus {
+    background: #f4f4f4;
+    color: #262626 !important;
+    border-color: var(--primary-color, #762730);
+}
+
+@media (max-width: 767px) {
+    .btn-theme-primary, .btn-outline-secondary {
+        font-size: 1rem !important;
+        padding: 0.65rem 1rem !important;
+        border-radius: 7px !important;
+    }
+}
+</style>
+<script>
+/*
+ * Convert all timestamps to local Philippine time (Asia/Manila, UTC+8) in 12hr format with AM/PM.
+ */
+function toPhilippineTimeString(dateISOString) {
+  const options = {
+    year: 'numeric', month: 'short', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+    timeZone: 'Asia/Manila'
+  };
+  const date = new Date(dateISOString);
+  let phString = date.toLocaleString('en-US', options)
+    .replace(/,/, '')
+    .replace(/(\d{2}) (.*)/, '$1, $2');
+  return phString;
+}
+window.addEventListener('DOMContentLoaded', function() {
+  // Convert main summary time
+  document.querySelectorAll('.local-time').forEach(function(el) {
+    if (el.dataset.datetime) {
+      el.textContent = toPhilippineTimeString(el.dataset.datetime);
+    }
+  });
+});
+</script>
 {% endblock %}

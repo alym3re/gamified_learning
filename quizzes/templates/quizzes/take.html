@@ -36,78 +36,65 @@
                 <small class="text-muted">{{ question.points }} point{{ question.points|pluralize }}</small>
             </div>
             <div class="card-body">
-                <p class="card-text">{{ question.text }}</p>
+                <p class="card-text">{{ question.text|safe }}</p>
                 <div class="answers">
-                    {% if question.question_type == "multiple_single" %}
-                        {% for choice in question.choices.all %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   name="choice_{{ question.id }}"
-                                   id="answer_{{ question.id }}_{{ choice.id }}"
-                                   value="{{ choice.id }}" required>
-                            <label class="form-check-label" for="answer_{{ question.id }}_{{ choice.id }}">
-                                {{ choice.text }}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    {% elif question.question_type == "multiple_multi" %}
-                        {% for choice in question.choices.all %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox"
-                                   name="choice_{{ question.id }}"
-                                   id="answer_{{ question.id }}_{{ choice.id }}"
-                                   value="{{ choice.id }}">
-                            <label class="form-check-label" for="answer_{{ question.id }}_{{ choice.id }}">
-                                {{ choice.text }}
-                            </label>
-                        </div>
-                        {% endfor %}
-                    {% elif question.question_type == "true_false" %}
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   name="tf_{{ question.id }}"
-                                   id="tf_{{ question.id }}_true"
-                                   value="True" required>
-                            <label class="form-check-label" for="tf_{{ question.id }}_true">True</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   name="tf_{{ question.id }}"
-                                   id="tf_{{ question.id }}_false"
-                                   value="False" required>
-                            <label class="form-check-label" for="tf_{{ question.id }}_false">False</label>
-                        </div>
-                    {% elif question.question_type == "identification" %}
-                        <input type="text" class="form-control" name="ident_{{ question.id }}" placeholder="Your answer here..." required>
-                    {% else %}
+                    {% if question.question_type == "multiple_choice" %}
                         {% for answer in question.answers.all %}
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" 
-                                   name="question_{{ question.id }}" 
-                                   id="answer_{{ question.id }}_{{ answer.id }}" 
+                            <input class="form-check-input" type="radio"
+                                   name="question_{{ question.id }}"
+                                   id="answer_{{ question.id }}_{{ answer.id }}"
                                    value="{{ answer.id }}" required>
                             <label class="form-check-label" for="answer_{{ question.id }}_{{ answer.id }}">
                                 {{ answer.text }}
                             </label>
                         </div>
                         {% endfor %}
+                    {% elif question.question_type == "multiple_answer" %}
+                        {% for answer in question.answers.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox"
+                                   name="question_{{ question.id }}"
+                                   id="answer_{{ question.id }}_{{ answer.id }}"
+                                   value="{{ answer.id }}">
+                            <label class="form-check-label" for="answer_{{ question.id }}_{{ answer.id }}">
+                                {{ answer.text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% elif question.question_type == "true_false" %}
+                        {% for answer in question.answers.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="question_{{ question.id }}"
+                                   id="tf_{{ question.id }}_{{ answer.text|lower }}"
+                                   value="{{ answer.id }}" required>
+                            <label class="form-check-label" for="tf_{{ question.id }}_{{ answer.text|lower }}">
+                                {{ answer.text|title }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% elif question.question_type == "identification" %}
+                        <input type="text" class="form-control" name="question_{{ question.id }}" placeholder="Your answer here..." required>
                     {% endif %}
                 </div>
             </div>
         </div>
         {% endfor %}
-        <button type="submit" class="btn btn-primary btn-lg">Submit Quiz</button>
+        <div class="d-flex justify-content-between">
+            <button type="submit" class="btn btn-primary btn-lg">Submit Quiz</button>
+            <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
     </form>
 </div>
 {% endblock %}
 
 {% block js %}
 <script>
-// Timer implementation
 {% if quiz.time_limit > 0 %}
     let duration = {{ quiz.time_limit }} * 60; // Convert to seconds
     const timerElement = document.getElementById('time-remaining');
-
+    
     function updateTimer() {
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;
@@ -126,7 +113,7 @@
             timerElement.classList.add('fw-bold');
         }
     }
-
+    
     // Start timer when page loads
     updateTimer();
 {% endif %}
