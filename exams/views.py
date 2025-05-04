@@ -294,12 +294,14 @@ def take_exam(request, exam_id):
                     total_score += question.points
 
             exam_score = (total_score / total_points) * 100 if total_points > 0 else 0
+            user_attempt.raw_points = total_score
+            user_attempt.total_points = total_points
             user_attempt.score = exam_score
             user_attempt.completed = True
             user_attempt.passed = exam_score >= exam.passing_score
             user_attempt.end_time = timezone.now()
             user_attempt.save()
-            messages.success(request, f"Exam submitted! Your score: {user_attempt.score:.2f}%")
+            messages.success(request, f"Exam submitted! Your score: {user_attempt.raw_points}/{user_attempt.total_points} points ({user_attempt.score:.2f}%)")
             return redirect('exams:exam_results', attempt_id=user_attempt.id)
 
     questions = exam.get_ordered_questions()

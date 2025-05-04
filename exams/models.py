@@ -29,7 +29,7 @@ class Exam(models.Model):
     locked = models.BooleanField(default=False, help_text="Lock this exam for non-admin users")
     shuffle_questions = models.BooleanField(default=False)
     show_correct_answers = models.BooleanField(help_text="Show correct answers after submission", default=True)
-    grading_period = models.CharField(max_length=10, choices=EXAM_GRADING_PERIOD_CHOICES, default='prelim', unique=True)
+    grading_period = models.CharField(max_length=10, choices=EXAM_GRADING_PERIOD_CHOICES, default='prelim')
     lesson = models.ForeignKey('lessons.Lesson', on_delete=models.SET_NULL, related_name='exams', null=True, blank=True)
     view_count = models.PositiveIntegerField(default=0)
 
@@ -123,15 +123,33 @@ class ExamAttempt(models.Model):
     exam = models.ForeignKey(Exam, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
-    score = models.FloatField(null=True, blank=True)
+    score = models.FloatField(null=True, blank=True)  # percent out of 100
+    raw_points = models.FloatField(null=True, blank=True)   # points earned
+    total_points = models.FloatField(null=True, blank=True) # points possible
     passed = models.BooleanField(default=False)
     completed = models.BooleanField(default=False)
+    grading_period = models.CharField(
+        max_length=10,
+        choices=EXAM_GRADING_PERIOD_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Cached grading period for dashboard filtering"
+    )
 
     class Meta:
         ordering = ['-start_time']
 
     def __str__(self):
         return f"{self.user.username} - {self.exam.title}"
+        
+    def save(self, *args, **kwargs):
+        # Auto-set grading_period from the related exam
+        if not self.grading_period and self.exam_id:
+            try:
+                self.grading_period = self.exam.grading_period
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     def duration(self):
         if self.end_time:
@@ -158,9 +176,15 @@ class ExamAttempt(models.Model):
             return "0 seconds"
 
     def calculate_score(self):
-        correct_answers = self.user_answers.filter(is_correct=True).count()
-        total_questions = self.exam.question_count()
-        self.score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+        # Calculate actual points, total possible, and percent
+        gained_pts = sum(
+            q.points for q in self.exam.questions.all()
+            if self.user_answers.filter(question=q, is_correct=True).exists()
+        )
+        total_pts = sum(q.points for q in self.exam.questions.all())
+        self.raw_points = gained_pts
+        self.total_points = total_pts
+        self.score = (gained_pts / total_pts) * 100 if total_pts else 0
         self.passed = self.score >= self.exam.passing_score
         self.save()
         return self.score

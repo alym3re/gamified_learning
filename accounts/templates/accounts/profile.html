@@ -1,131 +1,104 @@
+
 {% extends 'base.html' %}
 {% block title %}My Profile{% endblock %}
 
 {% block content %}
-<div class="container">
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card mb-4 shadow-sm">
-                <div class="card-body text-center">
-                    <div class="profile-pic-container mx-auto mb-3">
-                        {% if user.profile_pic %}
-                            <img src="{{ user.profile_pic.url }}" alt="Profile picture" class="img-fluid rounded-circle">
-                        {% else %}
-                            <div class="default-profile-pic d-flex align-items-center justify-content-center">
-                                <i class="fas fa-user fa-4x text-muted"></i>
-                            </div>
-                        {% endif %}
+<div class="container pt-5 pb-5" style="max-width:700px;">
+    <div class="card shadow-sm border-0 p-0">
+        <!-- Profile Upper Section -->
+        <div class="p-4 pb-3 d-flex flex-column flex-md-row align-items-center gap-4" style="border-bottom:1.5px solid #f1f1f5;">
+            <div class="profile-pic-container mb-0">
+                {% if user.profile_pic %}
+                    <img src="{{ user.profile_pic.url }}" alt="Profile picture" class="img-fluid rounded-circle shadow" style="width:120px;height:120px;object-fit:cover;">
+                {% else %}
+                    <div class="default-profile-pic theme-bg-light rounded-circle d-flex align-items-center justify-content-center" style="width:120px;height:120px;">
+                        <i class="bi bi-person-circle" style="font-size:4.2em;color:#bbb;"></i>
                     </div>
-                    
-                    <h4 class="mb-1">{{ user.get_full_name }}</h4>
-                    <p class="text-muted mb-2">{{ user.student_id }}</p>
-                    
-                    <div class="d-flex justify-content-center mb-3">
-                        <div class="me-3 text-center">
-                            <h5 class="mb-0">{{ user.points }}</h5>
-                            <small class="text-muted">Points</small>
-                        </div>
-                        <div class="text-center">
-                            <h5 class="mb-0">{{ user.level }}</h5>
-                            <small class="text-muted">Level</small>
-                        </div>
-                    </div>
-                    
-                    <button id="edit-profile-btn" class="btn btn-outline-primary btn-sm">
-                        <i class="fas fa-edit me-1"></i>Edit Profile
-                    </button>
-                </div>
+                {% endif %}
             </div>
-            
-            <div class="card shadow-sm">
-                <div class="card-header bg-light">
-                    <h6 class="mb-0"><i class="fas fa-cog me-1"></i>Account Settings</h6>
+            <div class="flex-grow-1">
+                <h2 class="fw-bold mb-1">{{ user.get_full_name }}</h2>
+                <div class="mb-2 profile-identity-view">
+                    <span class="badge bg-light text-secondary me-2">Username: <b>{{ user.username }}</b></span>
+                    <span class="badge bg-primary" style="font-size: 1.02rem;">Student ID: {{ user.student_id }}</span>
                 </div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-key me-1"></i>Change Password</span>
-                            <a href="{% url 'password_reset' %}" class="btn btn-sm btn-outline-secondary">Change</a>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-envelope me-1"></i>Email</span>
-                            <span>{{ user.email }}</span>
-                        </li>
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <span><i class="fas fa-calendar-alt me-1"></i>Member Since</span>
-                            <span>{{ user.date_joined|date:"M Y" }}</span>
-                        </li>
-                    </ul>
+                <div class="mb-2 text-muted" style="font-size:1.08em;">
+                    <i class="bi bi-calendar-week me-1"></i>
+                    Member since {{ user.date_joined|date:"M Y" }}
                 </div>
+                <a href="{% url 'password_change' %}" class="btn btn-outline-secondary btn-sm mt-2">
+                    <i class="bi bi-key me-1"></i>Change Password
+                </a>
+                <button id="edit-profile-btn" class="btn btn-outline-primary btn-sm mt-2 ms-2">
+                    <i class="bi bi-pencil-square me-1"></i>Edit Profile
+                </button>
             </div>
         </div>
-        
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0"><i class="fas fa-user-edit me-1"></i>Profile Information</h6>
-                    <span class="badge bg-primary">Student</span>
-                </div>
-                <div class="card-body">
-                    <div class="profile-display">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <p class="mb-1 text-muted">First Name</p>
-                                <h5>{{ user.first_name }}</h5>
-                            </div>
-                            <div class="col-md-6">
-                                <p class="mb-1 text-muted">Last Name</p>
-                                <h5>{{ user.last_name }}</h5>
-                            </div>
-                        </div>
-                        {% if user.middle_name %}
-                        <div class="row mb-3">
-                            <div class="col-12">
-                                <p class="mb-1 text-muted">Middle Name</p>
-                                <h5>{{ user.middle_name }}</h5>
-                            </div>
-                        </div>
-                        {% endif %}
-                        <div class="row">
-                            <div class="col-12">
-                                <p class="mb-1 text-muted">Username</p>
-                                <h5>{{ user.username }}</h5>
-                            </div>
-                        </div>
+        <!-- Profile Info/Editable Section -->
+        <div class="card-body px-4 py-4">
+            <div class="profile-display">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label text-muted mb-0">First Name</label>
+                        <div class="fw-semibold fs-5">{{ user.first_name }}</div>
                     </div>
-                    
-                    <form method="post" enctype="multipart/form-data" id="profile-form" class="d-none">
-                        {% csrf_token %}
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
-                                {{ form.first_name }}
-                            </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
-                                {{ form.last_name }}
-                            </div>
-                        </div>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="{{ form.middle_name.id_for_label }}" class="form-label">Middle Name</label>
-                                {{ form.middle_name }}
-                            </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.email.id_for_label }}" class="form-label">Email</label>
-                                {{ form.email }}
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="{{ form.profile_pic.id_for_label }}" class="form-label">Profile Picture</label>
-                            {{ form.profile_pic }}
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i>Save Changes
-                        </button>
-                    </form>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted mb-0">Last Name</label>
+                        <div class="fw-semibold fs-5">{{ user.last_name }}</div>
+                    </div>
+                    {% if user.middle_name %}
+                    <div class="col-12">
+                        <label class="form-label text-muted mb-0">Middle Name</label>
+                        <div class="fw-semibold fs-5">{{ user.middle_name }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6">
+                        <label class="form-label text-muted mb-0">Username</label>
+                        <div class="fw-semibold fs-5">{{ user.username }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted mb-0">Student ID</label>
+                        <div class="fw-semibold fs-5">{{ user.student_id }}</div>
+                    </div>
                 </div>
             </div>
+            <form method="post" enctype="multipart/form-data" id="profile-form" class="d-none mt-3 needs-validation" novalidate>
+                {% csrf_token %}
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="{{ form.first_name.id_for_label }}" class="form-label">First Name</label>
+                        {{ form.first_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.last_name.id_for_label }}" class="form-label">Last Name</label>
+                        {{ form.last_name }}
+                    </div>
+                    <div class="col-12">
+                        <label for="{{ form.middle_name.id_for_label }}" class="form-label">Middle Name</label>
+                        {{ form.middle_name }}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.username.id_for_label }}" class="form-label">Username</label>
+                        {{ form.username }}
+                    </div>
+                    <div class="col-md-6">
+                        <label for="{{ form.student_id.id_for_label }}" class="form-label">Student ID</label>
+                        {{ form.student_id }}
+                    </div>
+                    <div class="col-12">
+                        <label for="{{ form.profile_pic.id_for_label }}" class="form-label">Profile Picture</label>
+                        {{ form.profile_pic }}
+                    </div>
+                </div>
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save me-1"></i>Save Changes
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="cancel-edit">
+                        <i class="bi bi-x-circle me-1"></i>Cancel
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -134,32 +107,43 @@
 {% block css %}
 <style>
     .profile-pic-container {
-        width: 150px;
-        height: 150px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
         overflow: hidden;
-        border: 5px solid #f8f9fa;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border: 4px solid #f3f6fa;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        margin-top: 8px;
+        margin-bottom: 8px;
+        background: #f8fafd;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
-    
     .default-profile-pic {
         width: 100%;
         height: 100%;
         background-color: #e9ecef;
     }
-    
-    .list-group-item {
-        border-left: none;
-        border-right: none;
-        padding: 1rem 0;
+    .card {
+        border-radius: 16px;
     }
-    
-    .list-group-item:first-child {
-        border-top: none;
+    .btn-outline-primary {
+        color: #3853b5;
+        border-color: #c2d2fa;
     }
-    
-    .list-group-item:last-child {
-        border-bottom: none;
+    .btn-outline-primary:hover,
+    .btn-outline-primary:focus {
+        background:#e1eaff;
+        color:#3853b5;
+        border-color: #3853b5;
+    }
+    .btn-outline-secondary {
+        border-color: #e7e9ec;
+    }
+    /* style edit form for clarity */
+    #profile-form input, #profile-form select {
+        margin-bottom: 3px;
     }
 </style>
 {% endblock %}
@@ -170,20 +154,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const editBtn = document.getElementById('edit-profile-btn');
     const profileDisplay = document.querySelector('.profile-display');
     const profileForm = document.getElementById('profile-form');
-    
+    const cancelBtn = document.getElementById('cancel-edit');
+
     if (editBtn && profileDisplay && profileForm) {
         editBtn.addEventListener('click', function() {
-            profileDisplay.classList.toggle('d-none');
-            profileForm.classList.toggle('d-none');
-            
-            if (profileForm.classList.contains('d-none')) {
-                this.innerHTML = '<i class="fas fa-edit me-1"></i>Edit Profile';
-            } else {
-                this.innerHTML = '<i class="fas fa-times me-1"></i>Cancel';
-            }
+            profileDisplay.classList.add('d-none');
+            profileForm.classList.remove('d-none');
         });
     }
-    
+    if (cancelBtn && profileDisplay && profileForm) {
+        cancelBtn.addEventListener('click', function(){
+            profileDisplay.classList.remove('d-none');
+            profileForm.classList.add('d-none');
+        });
+    }
+
     // Profile picture preview
     const profilePicInput = document.getElementById('id_profile_pic');
     if (profilePicInput) {

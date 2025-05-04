@@ -15,9 +15,9 @@ class QuestionInline(admin.TabularInline):
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
     list_display = (
-        'title', 'grading_period', 'created_by', 'created_at', 'is_active', 'is_archived', 'question_count'
+        'title', 'grading_period', 'created_by', 'created_at', 'is_archived', 'question_count'
     )
-    list_filter = ('is_active', 'is_archived', 'grading_period', 'created_at')
+    list_filter = ('is_archived', 'grading_period', 'created_at')
     search_fields = ('title', 'description', 'created_by__username')
     inlines = [QuestionInline]
     readonly_fields = ('view_count', 'created_at', 'updated_at')

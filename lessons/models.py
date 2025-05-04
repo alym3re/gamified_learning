@@ -80,12 +80,25 @@ class LessonAccess(models.Model):
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
     access_type = models.CharField(max_length=10, choices=ACCESS_TYPE_CHOICES)
     timestamp = models.DateTimeField(auto_now_add=True)
+    grading_period = models.CharField(
+        max_length=10,
+        choices=GRADING_PERIOD_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Cached grading period for filtering dashboard views"
+    )
 
     class Meta:
         ordering = ['-timestamp']
 
     def __str__(self):
         return f"{self.user.username} {self.access_type} {self.lesson.title} on {self.timestamp}"
+    
+    def save(self, *args, **kwargs):
+        # Auto-set grading_period from the associated lesson
+        if not self.grading_period and self.lesson:
+            self.grading_period = self.lesson.grading_period
+        super().save(*args, **kwargs)
 
 class LessonProgress(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)

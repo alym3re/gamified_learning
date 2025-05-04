@@ -22,7 +22,7 @@ def grading_period_list(request):
     locked_periods = {lk.period: lk.locked for lk in LockedQuizPeriod.objects.all()}
 
     for period_value, period_label in periods:
-        quizzes = Quiz.objects.filter(grading_period=period_value, is_active=True, is_archived=False)
+        quizzes = Quiz.objects.filter(grading_period=period_value, is_archived=False)
         quiz_count = quizzes.count()
         view_count = quizzes.aggregate(total_views=models.Sum("view_count"))["total_views"] or 0
 
@@ -64,7 +64,7 @@ def quiz_list_by_period(request, grading_period):
         messages.error(request, "Invalid grading period.")
         return redirect('quizzes:grading_period_list')
 
-    quizzes_qs = Quiz.objects.filter(is_active=True, grading_period=grading_period).order_by('-created_at')
+    quizzes_qs = Quiz.objects.filter(grading_period=grading_period).order_by('-created_at')
     period_display = dict(GRADING_PERIOD_CHOICES)[grading_period]
     paginator = Paginator(quizzes_qs, 12)
 
@@ -95,7 +95,7 @@ def quiz_list(request):
 
 @login_required
 def view_quiz(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True, is_archived=False)
+    quiz = get_object_or_404(Quiz, id=quiz_id, is_archived=False)
     if hasattr(quiz, 'increment_view_count'):
         quiz.increment_view_count()
     questions = quiz.questions.all().prefetch_related('answers')
@@ -248,7 +248,7 @@ def add_quiz_questions(request, quiz_id):
 
 @login_required
 def take_quiz(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True, is_archived=False)
+    quiz = get_object_or_404(Quiz, id=quiz_id, is_archived=False)
     
     # Restrict to ONE complete attempt per user
     # If attempt exists for user & quiz, block further access.
@@ -309,6 +309,8 @@ def take_quiz(request, quiz_id):
             
             user_attempt.completed = True
             user_attempt.end_time = timezone.now()
+            user_attempt.raw_points = total_score
+            user_attempt.total_points = total_points
             user_attempt.score = (total_score / total_points) * 100 if total_points > 0 else 0
             user_attempt.passed = user_attempt.score >= quiz.passing_score
             user_attempt.save()
@@ -341,7 +343,9 @@ def quiz_results(request, attempt_id):
     return render(request, 'quizzes/results.html', {
         'attempt': attempt,
         'user_answers': user_answers,
-        'show_answers': attempt.quiz.show_correct_answers or attempt.passed or request.user.is_staff
+        'show_answers': attempt.quiz.show_correct_answers or attempt.passed or request.user.is_staff,
+        'raw_points': attempt.raw_points,
+        'total_points': attempt.total_points
     })
 
 
@@ -374,7 +378,7 @@ def delete_question(request, quiz_id, question_id):
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def archive_quiz(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True)
+    quiz = get_object_or_404(Quiz, id=quiz_id)
     quiz.is_archived = True
     quiz.save(update_fields=['is_archived'])
     messages.success(request, f'Quiz "{quiz.title}" archived.')
@@ -386,7 +390,7 @@ def archive_quiz(request, quiz_id):
 @login_required
 @user_passes_test(lambda u: u.is_staff)
 def unarchive_quiz(request, quiz_id):
-    quiz = get_object_or_404(Quiz, id=quiz_id, is_active=True)
+    quiz = get_object_or_404(Quiz, id=quiz_id)
     quiz.is_archived = False
     quiz.save(update_fields=['is_archived'])
     messages.success(request, f'Quiz "{quiz.title}" unarchived.')

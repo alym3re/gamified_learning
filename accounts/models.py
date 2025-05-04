@@ -10,8 +10,6 @@ class User(AbstractUser):
     student_id = models.CharField(max_length=20, unique=True)
     middle_name = models.CharField(max_length=50, blank=True)
     profile_pic = models.ImageField(upload_to=profile_pic_path, blank=True, null=True)
-    points = models.IntegerField(default=0)
-    level = models.IntegerField(default=1)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
     

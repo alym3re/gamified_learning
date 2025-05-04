@@ -1,14 +1,31 @@
+
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from lessons.models import Lesson
-from quizzes.models import QuizAttempt, Quiz
-from exams.models import Exam
-from exams.models import ExamAttempt
-from .models import StudentProgress, ActivityLog, Badge
-from django.db.models import Count, Avg, Max
+from lessons.models import Lesson, LessonProgress
+from quizzes.models import Quiz, QuizAttempt
+from exams.models import Exam, ExamAttempt
+from .models import StudentProgress, ActivityLog
+from django.db.models import Q, Sum, Avg, Count
 from django.utils import timezone
 from datetime import timedelta
+
+# --- DEFINE GRADING PERIODS ---
+GRADING_PERIODS = [
+    ('prelim', 'Prelim'),
+    ('midterm', 'Midterm'),
+    ('prefinal', 'Prefinal'),
+    ('final', 'Final'),
+]
+
+def get_period_label(period_value):
+    for val, label in GRADING_PERIODS:
+        if val == period_value:
+            return label
+    return period_value
+
+def has_grading_period_field(model):
+    return 'grading_period' in [f.name for f in model._meta.get_fields()]
 
 @login_required
 def dashboard(request):
@@ -18,41 +35,246 @@ def dashboard(request):
 
 @login_required
 def student_dashboard(request):
-    # Get or create student progress
-    progress, created = StudentProgress.objects.get_or_create(user=request.user)
-    
-    # Recent activities
-    activities = ActivityLog.objects.filter(user=request.user).order_by('-timestamp')[:10]
-    
-    # Recent lessons (last 5 viewed)
-    recent_lessons = Lesson.objects.filter(
-        id__in=ActivityLog.objects.filter(
-            user=request.user,
-            activity_type='lesson'
-        ).values_list('object_id', flat=True)
-    ).distinct()[:5]
-    
-    # Quiz and exam attempts
-    quiz_attempts = QuizAttempt.objects.filter(user=request.user, completed=True).order_by('-end_time')[:5]
-    exam_attempts = ExamAttempt.objects.filter(user=request.user, completed=True).order_by('-end_time')[:5]
-    
-    # Calculate progress stats
-    total_lessons = Lesson.objects.count()
-    completed_lessons = ActivityLog.objects.filter(
-        user=request.user,
-        activity_type='lesson'
-    ).values('object_id').distinct().count()
-    
-    lesson_progress = (completed_lessons / total_lessons * 100) if total_lessons > 0 else 0
-    
+    user = request.user
+
+    grading_periods = GRADING_PERIODS
+    period_stats = {}
+
+    # -- Compute overall quiz and exam POINTS for the user (not percent) --
+    quiz_points_qs = QuizAttempt.objects.filter(
+        user=user,
+        completed=True,
+        quiz__is_archived=False  # Exclude archived quizzes
+    )
+    exam_points_qs = ExamAttempt.objects.filter(user=user, completed=True)
+    # Use raw_points if present, otherwise fallback to score field
+    total_quiz_points = quiz_points_qs.aggregate(
+        s=Sum('raw_points')
+    )['s']
+    if total_quiz_points is None:
+        total_quiz_points = quiz_points_qs.aggregate(s=Sum('score'))['s'] or 0
+
+    total_exam_points = exam_points_qs.aggregate(
+        s=Sum('raw_points')
+    )['s']
+    if total_exam_points is None:
+        total_exam_points = exam_points_qs.aggregate(s=Sum('score'))['s'] or 0
+
+    # -- Compute ranking by sum of total quiz and exam points for all users --
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    all_students = User.objects.filter(is_staff=False)
+    student_totals = []
+    for student in all_students:
+        quiz_qs = QuizAttempt.objects.filter(
+            user=student,
+            completed=True,
+            quiz__is_archived=False  # Exclude archived quizzes
+        )
+        exam_qs = ExamAttempt.objects.filter(user=student, completed=True)
+        stu_quiz_points = quiz_qs.aggregate(s=Sum('raw_points'))['s']
+        if stu_quiz_points is None:
+            stu_quiz_points = quiz_qs.aggregate(s=Sum('score'))['s'] or 0
+        stu_exam_points = exam_qs.aggregate(s=Sum('raw_points'))['s']
+        if stu_exam_points is None:
+            stu_exam_points = exam_qs.aggregate(s=Sum('score'))['s'] or 0
+        student_totals.append({
+            'user_id': student.id,
+            'total_points': (stu_quiz_points or 0) + (stu_exam_points or 0)
+        })
+    sorted_students = sorted(student_totals, key=lambda x: x['total_points'], reverse=True)
+    overall_rank = None
+    for idx, stu in enumerate(sorted_students, 1):
+        if stu['user_id'] == user.id:
+            overall_rank = idx
+            break
+    total_students = all_students.count()
+
+    # -- Per-Period Stats (for grading period cards) --
+    for period_value, period_label in grading_periods:
+        # Only consider active lessons in the period
+        lessons_in_period = Lesson.objects.filter(grading_period=period_value, is_active=True)
+        total_lessons = lessons_in_period.count()
+        lessons_read_count = LessonProgress.objects.filter(
+            user=user,
+            lesson__grading_period=period_value,
+            completed=True,
+            lesson__is_active=True
+        ).count() if total_lessons > 0 else 0
+
+        lessons_progress_percent = round(lessons_read_count / total_lessons * 100, 1) if total_lessons else 0
+
+        quizzes_answered_count = 0
+        quiz_result_list = []
+        if has_grading_period_field(QuizAttempt):
+            quiz_q = Q(user=user, completed=True, grading_period=period_value)
+            quizzes_attempts_qs = QuizAttempt.objects.filter(quiz_q, quiz__is_archived=False).select_related('quiz')
+            quizzes_answered_count = quizzes_attempts_qs.count()
+            for qa in quizzes_attempts_qs:
+                all_users_attempts = QuizAttempt.objects.filter(
+                    quiz=qa.quiz, 
+                    completed=True, 
+                    grading_period=period_value,
+                    quiz__is_archived=False
+                ).order_by('-score')
+                all_scores = list(all_users_attempts.values_list('score', flat=True))
+                placer = all_scores.index(qa.score) + 1 if qa.score in all_scores else None
+                top_score = all_scores[0] if all_scores else None
+                badge = placer == 1 and qa.score == top_score
+                earned_points = getattr(qa, "raw_points", None)
+                total_points = getattr(qa, "total_points", None)
+                max_score = getattr(qa.quiz, 'max_score', 100)
+                score_percent = round((qa.score / max_score) * 100, 1) if max_score else 0
+                quiz_result_list.append({
+                    'quiz_title': qa.quiz.title,
+                    'score': qa.score,
+                    'total_score': max_score,
+                    'earned_points': earned_points,
+                    'total_points': total_points,
+                    'score_percent': score_percent,
+                    'placer': placer,
+                    'badge': badge,
+                    'raw_score': qa.score,  # actual score
+                })
+
+        exam_result_list = []
+        if has_grading_period_field(ExamAttempt):
+            exam_q = Q(user=user, completed=True, grading_period=period_value)
+            exams_attempts_qs = ExamAttempt.objects.filter(exam_q).select_related('exam')
+
+            for ea in exams_attempts_qs:
+                all_users_attempts = ExamAttempt.objects.filter(
+                    exam=ea.exam, 
+                    completed=True, 
+                    grading_period=period_value
+                ).order_by('-score')
+                all_scores = list(all_users_attempts.values_list('score', flat=True))
+                placer = all_scores.index(ea.score) + 1 if ea.score in all_scores else None
+                top_score = all_scores[0] if all_scores else None
+                badge = placer == 1 and ea.score == top_score
+                earned_points = getattr(ea, "raw_points", None)
+                total_points = getattr(ea, "total_points", None)
+                max_score = getattr(ea.exam, 'max_score', 100)
+                score_percent = round((ea.score / max_score) * 100, 1) if max_score else 0
+                status = "passed" if getattr(ea, "passed", False) else "failed"
+                exam_result_list.append({
+                    'exam_title': ea.exam.title,
+                    'score': ea.score,
+                    'total_score': max_score,
+                    'earned_points': earned_points,
+                    'total_points': total_points,
+                    'score_percent': score_percent,
+                    'placer': placer,
+                    'status': status,
+                    'badge': badge,
+                    'raw_score': ea.score,  # actual score
+                })
+
+        period_stats[period_value] = {
+            'label': period_label,
+            'lessons_read_count': lessons_read_count,
+            'total_lessons': total_lessons,
+            'lessons_progress_percent': lessons_progress_percent,
+            'quizzes_answered_count': quizzes_answered_count,
+            'quiz_result_list': quiz_result_list,
+            'exam_result_list': exam_result_list
+        }
+
+    # --- Organize Achievements into lesson, quiz, exam groups ---
+    # Lessons Achievements
+    lessons_achievements = []
+    lessons_read_period = {}
+    for period_value, period_label in grading_periods:
+        active_lessons = Lesson.objects.filter(grading_period=period_value, is_active=True).count()
+        lessons_read = LessonProgress.objects.filter(
+            user=user,
+            lesson__grading_period=period_value,
+            completed=True,
+            lesson__is_active=True
+        ).count() if active_lessons > 0 else 0
+
+        lessons_read_period[period_value] = (lessons_read, active_lessons)
+        if active_lessons > 0 and lessons_read == active_lessons:
+            lessons_achievements.append({
+                'type': 'finished_lessons_period',
+                'description': f'100% lessons read at {period_label}',
+                'icon': 'book'
+            })
+
+    active_total_lessons = Lesson.objects.filter(is_active=True).count()
+    all_read = LessonProgress.objects.filter(
+        user=user,
+        lesson__is_active=True,
+        completed=True
+    ).values('lesson_id').distinct().count()
+
+    if active_total_lessons > 0 and all_read == active_total_lessons:
+        lessons_achievements.append({
+            'type': 'finished_lessons_all',
+            'description': f'100% lessons read (All)',
+            'icon': 'bookshelf'
+        })
+
+    # Quiz Achievements (perfect on each quiz)
+    quiz_achievements = []
+    user_quiz_attempts = QuizAttempt.objects.filter(
+        user=user,
+        completed=True,
+        quiz__is_archived=False
+    ).select_related('quiz')
+    for qa in user_quiz_attempts:
+        has_perfect = False
+        if hasattr(qa, "raw_points") and hasattr(qa, "total_points") and qa.raw_points is not None and qa.total_points is not None:
+            if qa.raw_points == qa.total_points and qa.total_points > 0:
+                has_perfect = True
+        else:
+            max_score = getattr(qa.quiz, 'max_score', 100)
+            if qa.score == max_score and max_score > 0:
+                has_perfect = True
+            elif qa.score >= 100:
+                has_perfect = True
+        if has_perfect:
+            quiz_achievements.append({
+                'quiz_title': qa.quiz.title,
+                'description': f'Perfect score at {qa.quiz.title}',
+                'icon': 'check-circle'
+            })
+
+    # Exam Achievements (perfect on each exam)
+    exam_achievements = []
+    user_exam_attempts = ExamAttempt.objects.filter(user=user, completed=True).select_related('exam')
+    for ea in user_exam_attempts:
+        has_perfect = False
+        period = getattr(ea, 'grading_period', None)
+        period_label = get_period_label(period)
+        if hasattr(ea, "raw_points") and hasattr(ea, "total_points") and ea.raw_points is not None and ea.total_points is not None:
+            if ea.raw_points == ea.total_points and ea.total_points > 0:
+                has_perfect = True
+        else:
+            max_score = getattr(ea.exam, 'max_score', 100)
+            if ea.score == max_score and max_score > 0:
+                has_perfect = True
+            elif ea.score >= 100:
+                has_perfect = True
+        if has_perfect:
+            exam_achievements.append({
+                'exam_title': ea.exam.title,
+                'description': f'Perfect score at {ea.exam.title} ({period_label})',
+                'icon': 'star-fill'
+            })
+
+
+
     context = {
-        'progress': progress,
-        'activities': activities,
-        'recent_lessons': recent_lessons,
-        'quiz_attempts': quiz_attempts,
-        'exam_attempts': exam_attempts,
-        'lesson_progress': round(lesson_progress, 1),
-        'badges': progress.badges.all()[:4],
+        'grading_periods': grading_periods,
+        'period_stats': period_stats,
+        'overall_rank': overall_rank,
+        'total_students': total_students,
+        'total_quiz_points': total_quiz_points,
+        'total_exam_points': total_exam_points,
+        'lessons_achievements': lessons_achievements,
+        'quiz_achievements': quiz_achievements,
+        'exam_achievements': exam_achievements,
     }
     return render(request, 'dashboard/student.html', context)
 
@@ -65,7 +287,6 @@ def admin_dashboard(request):
     from django.contrib.auth import get_user_model
     User = get_user_model()
     
-    # User statistics
     total_users = User.objects.count()
     new_users_week = User.objects.filter(
         date_joined__gte=timezone.now() - timedelta(days=7)
@@ -73,23 +294,203 @@ def admin_dashboard(request):
     active_users = User.objects.filter(
         last_login__gte=timezone.now() - timedelta(days=30)
     ).count()
-    
-    # Content statistics
     total_lessons = Lesson.objects.count()
     total_quizzes = Quiz.objects.count()
     total_exams = Exam.objects.count()
     
-    # Activity statistics
     recent_activities = ActivityLog.objects.all().order_by('-timestamp')[:10]
+    
+    # --------- Build per-period stats and rankings ---------
+    period_stats = {}
+
+    for period_value, period_label in GRADING_PERIODS:
+        # Lessons count for the period
+        total_lessons_in_period = Lesson.objects.filter(grading_period=period_value, is_active=True).count()
+        
+        # All quizzes in this period (not archived)
+        quizzes_in_period = Quiz.objects.filter(grading_period=period_value, is_archived=False)
+        quizzes_list = [
+            {'id': q.id, 'title': q.title}
+            for q in quizzes_in_period
+        ]
+
+        # All exams in this period
+        exams_in_period = Exam.objects.filter(grading_period=period_value)
+        exams_list = [
+            {'id': e.id, 'title': e.title}
+            for e in exams_in_period
+        ]
+
+        # --- Rankings for quizzes (for each quiz: list of student rankings sorted by score) ---
+        quiz_rankings = []
+        for quiz in quizzes_in_period:
+            attempts = (QuizAttempt.objects.filter(
+                quiz=quiz, completed=True)
+                .select_related('user')
+                .order_by('-score', 'user__username'))
+                
+            # Filter by grading period if the field exists
+            if has_grading_period_field(QuizAttempt):
+                attempts = attempts.filter(grading_period=period_value)
+                
+            # Group by user and get highest score per user for each quiz
+            student_best = {}
+            for att in attempts:
+                stu_id = att.user.id
+                score = att.score
+                # For total_points & earned_points
+                earned_points = getattr(att, "raw_points", None)
+                total_points = getattr(att, "total_points", None)
+                # Fallback to score and max_score if not present
+                if total_points is None:
+                    total_points = getattr(quiz, 'max_score', 100)
+                if earned_points is None:
+                    earned_points = score
+                if stu_id not in student_best or score > student_best[stu_id]['score']:
+                    student_best[stu_id] = {
+                        'student_name': att.user.get_full_name() or att.user.username,
+                        'score': score,
+                        'earned_points': earned_points,
+                        'total_points': total_points,
+                        'passed': getattr(att, "passed", None) if hasattr(att, "passed") else None
+                    }
+            ranked = sorted(student_best.values(), key=lambda x: x['score'], reverse=True)
+            rankings_rows = []
+            last_score = None
+            rank = 0
+            for idx, row in enumerate(ranked, 1):
+                if last_score is None or row['score'] < last_score:
+                    rank = idx
+                rankings_rows.append({
+                    'rank': rank,
+                    'student_name': row['student_name'],
+                    'score': row['score'],
+                    'earned_points': row['earned_points'],
+                    'total_points': row['total_points'],
+                    'passed': row['passed']
+                })
+                last_score = row['score']
+            quiz_rankings.append({
+                'quiz_title': quiz.title,
+                'rankings': rankings_rows,
+            })
+
+        # --- Rankings for exams (for each exam: list of student rankings sorted by score) ---
+        exam_rankings = []
+        for exam in exams_in_period:
+            attempts = (ExamAttempt.objects.filter(
+                exam=exam, completed=True)
+                .select_related('user')
+                .order_by('-score', 'user__username'))
+                
+            # Filter by grading period if the field exists
+            if has_grading_period_field(ExamAttempt):
+                attempts = attempts.filter(grading_period=period_value)
+                
+            student_best = {}
+            for att in attempts:
+                stu_id = att.user.id
+                score = att.score
+                earned_points = getattr(att, "raw_points", None)
+                total_points = getattr(att, "total_points", None)
+                if total_points is None:
+                    total_points = getattr(exam, 'max_score', 100)
+                if earned_points is None:
+                    earned_points = score
+                if stu_id not in student_best or score > student_best[stu_id]['score']:
+                    student_best[stu_id] = {
+                        'student_name': att.user.get_full_name() or att.user.username,
+                        'score': score,
+                        'earned_points': earned_points,
+                        'total_points': total_points,
+                        'passed': getattr(att, "passed", None) if hasattr(att, "passed") else None
+                    }
+            ranked = sorted(student_best.values(), key=lambda x: x['score'], reverse=True)
+            rankings_rows = []
+            last_score = None
+            rank = 0
+            for idx, row in enumerate(ranked, 1):
+                if last_score is None or row['score'] < last_score:
+                    rank = idx
+                rankings_rows.append({
+                    'rank': rank,
+                    'student_name': row['student_name'],
+                    'score': row['score'],
+                    'earned_points': row['earned_points'],
+                    'total_points': row['total_points'],
+                    'passed': row['passed']
+                })
+                last_score = row['score']
+            exam_rankings.append({
+                'exam_title': exam.title,
+                'rankings': rankings_rows,
+            })
+
+        period_stats[period_value] = {
+            'label': period_label,
+            'total_lessons': total_lessons_in_period,
+            'quizzes': quizzes_list,
+            'exams': exams_list,
+            'quiz_rankings': quiz_rankings,
+            'exam_rankings': exam_rankings,
+        }
+    
+    # Get some overall stats for the dashboard
+    from django.db.models import Max, Avg
     quiz_stats = QuizAttempt.objects.filter(completed=True).aggregate(
         avg_score=Avg('score'),
         high_score=Max('score')
     )
+    
+    # Calculate exam pass rate in Python instead of using ORM division
+    all_exam_attempts = ExamAttempt.objects.filter(completed=True)
+    total_exam_attempts = all_exam_attempts.count()
+    passing_exam_attempts = all_exam_attempts.filter(passed=True).count()
+    
     exam_stats = ExamAttempt.objects.filter(completed=True).aggregate(
-        avg_score=Avg('score'),
-        pass_rate=Avg('passed')
+        avg_score=Avg('score')
     )
     
+    # Add pass rate as a float (percent)
+    if total_exam_attempts > 0:
+        exam_stats['pass_rate'] = passing_exam_attempts / total_exam_attempts
+    else:
+        exam_stats['pass_rate'] = 0
+        
+    # --- OVERALL RANKING LOGIC ---
+    all_students = User.objects.filter(is_staff=False)
+    student_totals = []
+    for student in all_students:
+        quiz_qs = QuizAttempt.objects.filter(
+            user=student,
+            completed=True,
+            quiz__is_archived=False  # Exclude archived quizzes
+        )
+        exam_qs = ExamAttempt.objects.filter(user=student, completed=True)
+        stu_quiz_points = quiz_qs.aggregate(s=Sum('raw_points'))['s']
+        if stu_quiz_points is None:
+            stu_quiz_points = quiz_qs.aggregate(s=Sum('score'))['s'] or 0
+        stu_exam_points = exam_qs.aggregate(s=Sum('raw_points'))['s']
+        if stu_exam_points is None:
+            stu_exam_points = exam_qs.aggregate(s=Sum('score'))['s'] or 0
+        student_totals.append({
+            'user_id': student.id,
+            'full_name': f"{student.first_name} {student.last_name}".strip() or student.username,
+            'total_points': (stu_quiz_points or 0) + (stu_exam_points or 0),
+            'quiz_points': stu_quiz_points or 0,
+            'exam_points': stu_exam_points or 0,
+        })
+    sorted_students = sorted(student_totals, key=lambda x: x['total_points'], reverse=True)
+    overall_rankings = []
+    for idx, stu in enumerate(sorted_students, 1):
+        overall_rankings.append({
+            'rank': idx,
+            'full_name': stu['full_name'],
+            'quiz_points': stu['quiz_points'],
+            'exam_points': stu['exam_points'],
+            'total_points': stu['total_points'],
+        })
+
     context = {
         'total_users': total_users,
         'new_users_week': new_users_week,
@@ -100,5 +501,8 @@ def admin_dashboard(request):
         'recent_activities': recent_activities,
         'quiz_stats': quiz_stats,
         'exam_stats': exam_stats,
+        'grading_periods': GRADING_PERIODS,
+        'period_stats': period_stats,
+        'overall_rankings': overall_rankings,
     }
     return render(request, 'dashboard/admin.html', context)

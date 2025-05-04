@@ -23,6 +23,8 @@
     <!-- Favicon -->
     <link rel="icon" href="{% static 'images/icons/icon-192x192.png' %}">
     <link rel="apple-touch-icon" href="{% static 'images/icons/icon-192x192.png' %}">
+
+    
 </head>
 <body>
     <!-- Splash Screen -->
@@ -30,7 +32,9 @@
         <img src="{% static 'images/logo.png' %}" alt="Gamified Learning System">
     </div> {% endcomment %}
     
-    {% include 'includes/navbar.html' %}
+    {% block navbar %}
+        {% include 'includes/navbar.html' %}
+    {% endblock %}
     
     <main class="container mt-4">
         {% include 'includes/messages.html' %}
@@ -39,8 +43,8 @@
         
     <!-- Install PWA Button -->
     <div id="install-container">
-        <button id="install-button" class="btn btn-primary ">
-            <i class="bi bi-download"></i> Install App
+        <button id="install-button" class="btn btn-primary">
+            <i class="bi bi-download"></i>
         </button>
     </div>
     

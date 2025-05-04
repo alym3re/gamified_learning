@@ -10,7 +10,7 @@ class RegistrationForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['student_id', 'username', 'first_name', 'middle_name', 'last_name', 'email', 'profile_pic']
+        fields = ['student_id', 'username', 'first_name', 'middle_name', 'last_name', 'profile_pic']
         widgets = {
             'profile_pic': forms.FileInput(attrs={'accept': 'image/*'})
         }
@@ -48,7 +48,7 @@ class LoginForm(AuthenticationForm):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'middle_name', 'last_name', 'email', 'profile_pic']
+        fields = ['first_name', 'middle_name', 'last_name', 'student_id', 'username', 'profile_pic']
         widgets = {
             'profile_pic': forms.FileInput(attrs={'accept': 'image/*'})
         }

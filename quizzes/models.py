@@ -35,8 +35,6 @@ class Quiz(models.Model):
         help_text="Percentage required to pass",
         default=70
     )
-    is_active = models.BooleanField(default=True)
-    is_featured = models.BooleanField(default=False)
     is_archived = models.BooleanField(default=False)
     locked = models.BooleanField(default=False, help_text="Lock this quiz for non-admin users")
     shuffle_questions = models.BooleanField(default=False)
@@ -124,9 +122,18 @@ class QuizAttempt(models.Model):
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
     start_time = models.DateTimeField(auto_now_add=True)
     end_time = models.DateTimeField(null=True, blank=True)
-    score = models.FloatField(null=True, blank=True)
+    score = models.FloatField(null=True, blank=True)  # percent out of 100
+    raw_points = models.FloatField(null=True, blank=True)   # points earned
+    total_points = models.FloatField(null=True, blank=True) # points possible
     passed = models.BooleanField(default=False)
     completed = models.BooleanField(default=False)
+    grading_period = models.CharField(
+        max_length=10,
+        choices=GRADING_PERIOD_CHOICES,
+        blank=True,
+        null=True,
+        help_text="Cached grading period for dashboard filtering"
+    )
 
     class Meta:
         ordering = ['-start_time']
@@ -159,12 +166,29 @@ class QuizAttempt(models.Model):
             return "0 seconds"
 
     def calculate_score(self):
-        correct_answers = self.user_answers.filter(is_correct=True).count()
-        total_questions = self.quiz.question_count()
-        self.score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+        # Calculate total points possible and points earned
+        total_pts = sum(q.points for q in self.quiz.questions.all())
+        gained_pts = sum(
+            q.points for q in self.quiz.questions.all()
+            if self.user_answers.filter(question=q, is_correct=True).exists()
+        )
+        
+        # Calculate percentage score
+        self.score = (gained_pts / total_pts) * 100 if total_pts > 0 else 0
+        self.raw_points = gained_pts
+        self.total_points = total_pts
         self.passed = self.score >= self.quiz.passing_score
         self.save()
         return self.score
+        
+    def save(self, *args, **kwargs):
+        # Auto-set grading_period from the related quiz
+        if not self.grading_period and self.quiz_id:
+            try:
+                self.grading_period = self.quiz.grading_period
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
 class UserAnswer(models.Model):
     attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE, related_name='user_answers')
