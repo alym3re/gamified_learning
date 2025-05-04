@@ -1,30 +1,122 @@
 from django.db import models
 from django.contrib.auth import get_user_model
-from quizzes.models import Question
-from django.utils import timezone
+from django.urls import reverse
+from django.utils.text import slugify
+
+EXAM_GRADING_PERIOD_CHOICES = [
+    ('prelim', 'Prelim'),
+    ('midterm', 'Midterm'),
+    ('prefinal', 'Prefinal'),
+    ('final', 'Final'),
+]
+
+EXAM_QUESTION_TYPE_CHOICES = [
+    ('multiple_choice', 'Multiple Choice'),
+    ('true_false', 'True/False'),
+    ('identification', 'Identification'),
+]
+
 
 class Exam(models.Model):
     title = models.CharField(max_length=200)
-    description = models.TextField()
-    duration = models.PositiveIntegerField(help_text="Duration in minutes")
-    passing_score = models.PositiveIntegerField(default=70)
-    is_active = models.BooleanField(default=True)
+    slug = models.SlugField(max_length=200, unique=True, blank=True)
+    description = models.TextField(blank=True)
+    created_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    time_limit = models.PositiveIntegerField(help_text="Time limit in minutes (0 for no limit)", default=0)
+    passing_score = models.PositiveIntegerField(help_text="Percentage required to pass", default=70)
+    locked = models.BooleanField(default=False, help_text="Lock this exam for non-admin users")
     shuffle_questions = models.BooleanField(default=False)
-    show_results = models.BooleanField(default=True)
+    show_correct_answers = models.BooleanField(help_text="Show correct answers after submission", default=True)
+    grading_period = models.CharField(max_length=10, choices=EXAM_GRADING_PERIOD_CHOICES, default='prelim', unique=True)
+    lesson = models.ForeignKey('lessons.Lesson', on_delete=models.SET_NULL, related_name='exams', null=True, blank=True)
+    view_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name_plural = "exams"
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['grading_period'], name='unique_exam_per_period')
+        ]
 
     def __str__(self):
         return self.title
 
+    def get_absolute_url(self):
+        return reverse('exams:view_exam', kwargs={'slug': self.slug})
+
+    def save(self, *args, **kwargs):
+        # Enforce one exam per grading period
+        if not self.pk and Exam.objects.filter(grading_period=self.grading_period).exists():
+            raise ValueError('There can only be one exam per grading period.')
+        if not self.slug:
+            original_slug = slugify(self.title)
+            slug = original_slug
+            num = 1
+            while Exam.objects.filter(slug=slug).exists():
+                slug = f"{original_slug}-{num}"
+                num += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def increment_view_count(self):
+        self.view_count += 1
+        self.save(update_fields=["view_count"])
+
+    def question_count(self):
+        return self.questions.count()
+        
+    def get_ordered_questions(self):
+        """
+        Returns questions grouped by type and in this order:
+        1. Multiple Choice
+        2. True/False
+        3. Identification
+        """
+        ORDER_MAP = {
+            'multiple_choice': 0,
+            'true_false': 1,
+            'identification': 2
+        }
+        questions = list(self.questions.all())
+        # First sort by 'order', then by question_type mapped by custom order
+        return sorted(
+            questions,
+            key=lambda q: (ORDER_MAP.get(q.question_type, 99), q.order)
+        )
+
 class ExamQuestion(models.Model):
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='exam_questions')
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='questions')
+    text = models.TextField()
+    question_type = models.CharField(max_length=20, choices=EXAM_QUESTION_TYPE_CHOICES, default='multiple_choice')
+    explanation = models.TextField(blank=True)
     points = models.PositiveIntegerField(default=1)
     order = models.PositiveIntegerField(default=0)
-
+    
     class Meta:
         ordering = ['order']
+
+    def __str__(self):
+        label = dict(EXAM_QUESTION_TYPE_CHOICES).get(self.question_type, self.question_type)
+        return f"[{label}] {self.text[:50]}..." if len(self.text) > 50 else f"[{label}] {self.text}"
+
+    def is_multiple_choice(self):
+        return self.question_type == 'multiple_choice'
+    
+    def is_true_false(self):
+        return self.question_type == 'true_false'
+    
+    def is_identification(self):
+        return self.question_type == 'identification'
+
+class ExamAnswer(models.Model):
+    question = models.ForeignKey(ExamQuestion, on_delete=models.CASCADE, related_name='answers')
+    text = models.CharField(max_length=500)
+    is_correct = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.text[:50]}..." if len(self.text) > 50 else self.text
 
 class ExamAttempt(models.Model):
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
@@ -35,19 +127,66 @@ class ExamAttempt(models.Model):
     passed = models.BooleanField(default=False)
     completed = models.BooleanField(default=False)
 
-    def duration(self):
-        if self.end_time:
-            return (self.end_time - self.start_time).total_seconds() / 60
-        return None
+    class Meta:
+        ordering = ['-start_time']
 
     def __str__(self):
         return f"{self.user.username} - {self.exam.title}"
 
-class UserAnswer(models.Model):
+    def duration(self):
+        if self.end_time:
+            return (self.end_time - self.start_time).total_seconds()
+        return None
+
+    def duration_seconds(self):
+        if self.end_time:
+            return int((self.end_time - self.start_time).total_seconds())
+        return None
+
+    def duration_str(self):
+        seconds = self.duration_seconds()
+        if seconds is None:
+            return "Not completed"
+        minutes, sec = divmod(seconds, 60)
+        if minutes and sec:
+            return f"{minutes} minute{'s' if minutes != 1 else ''} {sec} second{'s' if sec != 1 else ''}"
+        elif minutes:
+            return f"{minutes} minute{'s' if minutes != 1 else ''}"
+        elif sec:
+            return f"{sec} second{'s' if sec != 1 else ''}"
+        else:
+            return "0 seconds"
+
+    def calculate_score(self):
+        correct_answers = self.user_answers.filter(is_correct=True).count()
+        total_questions = self.exam.question_count()
+        self.score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+        self.passed = self.score >= self.exam.passing_score
+        self.save()
+        return self.score
+
+class ExamUserAnswer(models.Model):
     attempt = models.ForeignKey(ExamAttempt, on_delete=models.CASCADE, related_name='user_answers')
-    question = models.ForeignKey(Question, on_delete=models.CASCADE)
-    selected_answer = models.ForeignKey('quizzes.Answer', on_delete=models.CASCADE, null=True, blank=True)
+    question = models.ForeignKey(ExamQuestion, on_delete=models.CASCADE, related_name='exam_user_answers')
+    selected_answers = models.ManyToManyField(ExamAnswer, blank=True, related_name='exam_user_selected_answers')
+    text_answer = models.TextField(blank=True, null=True)
     is_correct = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ('attempt', 'question')
+        
+    def check_answer(self):
+        question = self.question
+        if question.is_multiple_choice() or question.is_true_false():
+            correct_answers = set(question.answers.filter(is_correct=True).values_list('id', flat=True))
+            selected = set(self.selected_answers.values_list('id', flat=True))
+            self.is_correct = correct_answers == selected
+        elif question.is_identification():
+            correct_answers = [a.text.lower().strip() for a in question.answers.filter(is_correct=True)]
+            if self.text_answer:
+                user_ans = self.text_answer.lower().strip()
+                self.is_correct = user_ans in correct_answers
+            else:
+                self.is_correct = False
+        self.save()
+        return self.is_correct

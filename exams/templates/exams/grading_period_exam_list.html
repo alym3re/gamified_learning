@@ -1,80 +1,104 @@
 
-
 {% extends 'base.html' %}
 {% load dict_extras %}
 
-{% block title %}Grading Periods{% endblock %}
+{% block title %}Exam Grading Periods{% endblock %}
 
 {% block content %}
 <div class="container py-5">
-    <h1 class="mb-4 fw-bold text-primary" style="font-size:2.8rem;">Lessons</h1>
+    <h1 class="mb-4 fw-bold text-primary" style="font-size:2.8rem;">Exams</h1>
     <div class="row g-4">
-        {% for value, label in periods %}
-        {% with stats=period_stats|get_item:value %}
+        {% for period, stats in period_stats.items %}
         <div class="col-12 col-sm-6 col-md-6 col-lg-6">
             <div class="grading-period-card card border-0 shadow-sm position-relative d-flex flex-column h-100">
-                {% if stats.locked and not user.is_staff %}
+                {% if stats.exam and stats.exam.locked and not is_admin %}
                 <div class="locked-overlay d-flex flex-column align-items-center justify-content-center">
                     <i class="bi bi-lock-fill mb-3 theme-danger" style="font-size:2.8rem;"></i>
                     <span class="locked-text">Locked</span>
                 </div>
                 {% endif %}
                 <div class="card-body d-flex flex-column justify-content-between align-items-center p-5">
-                    <div class="period-status position-absolute top-0 end-0 m-3">
-                        {% if stats.locked %}
+                    {% if is_admin %}
+                      <div class="period-status position-absolute top-0 end-0 m-3">
+                        {% if stats.exam and stats.exam.locked %}
                             <i class="bi bi-lock-fill theme-danger" title="Locked" style="font-size:1.6rem;"></i>
                         {% else %}
                             <i class="bi bi-unlock-fill theme-success" title="Unlocked" style="font-size:1.6rem;"></i>
                         {% endif %}
-                    </div>
-                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;">{{ label }}</h3>
+                      </div>
+                    {% endif %}
+
+                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;">{{ stats.label }}</h3>
                     <p class="mb-2 theme-muted" style="font-size:1.35rem;">
-                        <i class="bi bi-journal-bookmark me-1"></i>
-                        <span class="fw-medium">{{ stats.lesson_count|default:"0" }} Lessons</span>
+                        <i class="bi bi-file-earmark-text me-1"></i>
+                        <span class="fw-medium">
+                            {% if stats.exam %}
+                                1 Exam: {{ stats.exam.title }}
+                            {% else %}
+                                No Exam Scheduled
+                            {% endif %}
+                        </span>
                     </p>
                     <p class="mb-4 theme-muted" style="font-size:1.25rem;">
                         <i class="bi bi-eye me-1"></i>
                         <span class="fw-medium">{{ stats.view_count|default:"0" }} Views</span>
                     </p>
-                    {% if user.is_staff %}
-                        <form method="post" action="{% url 'lessons:toggle_period_lock' value %}" class="w-100 mt-1">
+                    {% if is_admin %}
+                        <form method="post" action="{% url 'exams:toggle_period_lock' period %}" class="w-100 mt-1">
                             {% csrf_token %}
                             <button type="submit"
-                              class="btn btn-lg w-100 shadow-none {% if stats.locked %}btn-theme-success{% else %}btn-theme-danger{% endif %}">
-                                <i class="bi {% if stats.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %} me-1"></i>
-                                <span style="font-size:1.18rem;">{% if stats.locked %}Unlock Period{% else %}Lock Period{% endif %}</span>
+                              class="btn btn-lg w-100 shadow-none {% if stats.exam and stats.exam.locked %}btn-theme-success{% else %}btn-theme-danger{% endif %}">
+                                <i class="bi {% if stats.exam and stats.exam.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %} me-1"></i>
+                                <span style="font-size:1.18rem;">{% if stats.exam and stats.exam.locked %}Unlock Period{% else %}Lock Period{% endif %}</span>
                             </button>
                         </form>
+                        {% if not stats.exam %}
+                          <a href="{% url 'exams:create_exam' %}?grading_period={{ period }}"
+                             class="btn btn-lg w-100 shadow-none btn-theme-primary mb-2 mt-3">
+                            <i class="bi bi-plus-circle me-1"></i>
+                            <span style="font-size:1.18rem;">Create Exam</span>
+                          </a>
+                        {% else %}
+                          <a href="{% url 'exams:edit_exam' stats.exam.id %}"
+                             class="btn btn-lg w-100 shadow-none btn-theme-info mb-2 mt-3">
+                            <i class="bi bi-pencil-square me-1"></i>
+                            <span style="font-size:1.18rem;">Edit Exam</span>
+                          </a>
+                          <a href="{% url 'exams:add_exam_questions' stats.exam.id %}"
+                             class="btn btn-lg w-100 shadow-none btn-theme-muted mb-2">
+                            <i class="bi bi-question-circle me-1"></i>
+                            <span style="font-size:1.18rem;">Questions</span>
+                          </a>
+                        {% endif %}
                     {% else %}
-                        <div class="w-100 mb-3 mt-3">
-                            <div class="progress theme-progress" style="height: 28px;">
-                                <div class="progress-bar theme-info d-flex align-items-center justify-content-center"
-                                     role="progressbar"
-                                     style="width: {{ stats.progress_percent|default:"0" }}%; font-size:1.18rem;"
-                                     aria-valuenow="{{ stats.progress_percent|default:"0" }}"
-                                     aria-valuemin="0"
-                                     aria-valuemax="100">
-                                    {{ stats.progress_percent|default:"0" }}%
-                                </div>
-                            </div>
-                        </div>
+                        
                     {% endif %}
                 </div>
                 <div class="card-footer bg-white border-0 pt-0 pb-5 px-5">
-                    {% if stats.locked and not user.is_staff %}
-                      <button class="btn btn-theme-muted btn-lg w-100" style="font-size:1.15rem;" disabled>
-                        <i class="bi bi-lock-fill me-1"></i> Locked
-                      </button>
+                    {% if stats.exam and stats.exam.locked and not is_admin %}
+                        <button class="btn btn-theme-muted btn-lg w-100" style="font-size:1.15rem;" disabled>
+                            <i class="bi bi-lock-fill me-1"></i> Locked
+                        </button>
                     {% else %}
-                      <a href="{% url 'lessons:lesson_list_by_period' value %}"
-                         class="btn btn-theme-primary btn-lg w-100" style="font-size:1.18rem;">
-                        <i class="bi bi-box-arrow-in-right me-1"></i> View Lessons
-                      </a>
+                        {% if stats.exam %}
+                            <a href="{% url 'exams:view_exam' stats.exam.id %}"
+                               class="btn btn-theme-primary btn-lg w-100" style="font-size:1.18rem;">
+                                <i class="bi bi-box-arrow-in-right me-1"></i> 
+                                {% if is_admin %}
+                                    View Exam
+                                {% else %}
+                                    Take Exam
+                                {% endif %}
+                            </a>
+                        {% else %}
+                            <button class="btn btn-theme-muted btn-lg w-100" style="font-size:1.15rem;" disabled>
+                                No Exam Available
+                            </button>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
         </div>
-        {% endwith %}
         {% endfor %}
     </div>
 </div>

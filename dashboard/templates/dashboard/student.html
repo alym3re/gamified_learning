@@ -1,5 +1,6 @@
 
 {% extends 'base.html' %}
+{% load static %}
 {% block title %}Student Dashboard{% endblock %}
 
 {% block content %}
@@ -10,11 +11,19 @@
             <!-- Profile Card -->
             <div class="card mb-4">
                 <div class="card-body text-center">
-                    <img src="{{ request.user.profile_pic.url }}" 
-                         class="rounded-circle mb-3" 
-                         width="120" 
-                         height="120" 
-                         alt="Profile Picture">
+                    {% if request.user.profile_pic %}
+                        <img src="{{ request.user.profile_pic.url }}" 
+                             class="rounded-circle mb-3" 
+                             width="120" 
+                             height="120" 
+                             alt="Profile Picture">
+                    {% else %}
+                        <img src="{% static 'images/default-avatar.png' %}" 
+                             class="rounded-circle mb-3" 
+                             width="120" 
+                             height="120" 
+                             alt="Default Profile Picture">
+                    {% endif %}
                     <h4>{{ request.user.get_full_name }}</h4>
                     <p class="text-muted">{{ request.user.student_id }}</p>
                     

@@ -1,49 +1,35 @@
-
-{% extends 'base.html' %}
-{% block title %}Exam Results - {{ attempt.exam.title }}{% endblock %}
-
+{% extends "base.html" %}
 {% block content %}
-<div class="container">
-    <div class="card mb-4 {% if attempt.passed %}border-success{% else %}border-danger{% endif %}">
-        <div class="card-header {% if attempt.passed %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
-            <h2>Exam Results: {{ attempt.exam.title }}</h2>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <p><strong>Date Taken:</strong> {{ attempt.start_time|date:"M d, Y H:i" }}</p>
-                    <p><strong>Time Spent:</strong>
-                        {% if attempt.end_time %}
-                            {{ attempt.end_time|timeuntil:attempt.start_time }}
-                        {% else %}
-                            Not completed
-                        {% endif %}
-                    </p>
-                </div>
-                <div class="col-md-6">
-                    <p><strong>Your Score:</strong> {{ attempt.score|floatformat:1 }}%</p>
-                    <p><strong>Passing Score:</strong> {{ attempt.exam.passing_score }}%</p>
-                    <p><strong>Result:</strong>
-                        {% if attempt.passed %}
-                            <span class="badge bg-success">Passed</span>
-                        {% else %}
-                            <span class="badge bg-danger">Failed</span>
-                        {% endif %}
-                    </p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {# Optional: Show review button if exam allows and student passed (or always, adjust as needed) #}
-    {% if show_results %}
-        <div class="mb-4">
-            <a href="{% url 'exams:review_exam' attempt.id %}" class="btn btn-info">Review Answers</a>
-        </div>
-    {% endif %}
-
-    <div class="mt-4">
-        <a href="{% url 'exams:exam_list' %}" class="btn btn-primary">Back to Exams</a>
-    </div>
-</div>
+<h2>Exam Results</h2>
+<h3>{{ exam.title }}</h3>
+<p>Score: {{ attempt.score }} | Passed: {% if attempt.passed %}✔{% else %}✘{% endif %}</p>
+<table class="table">
+  <thead>
+    <tr>
+      <th>Question</th>
+      <th>Your Answer</th>
+      <th>Correct?</th>
+      <th>Explanation</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for user_answer in user_answers %}
+    <tr>
+      <td>{{ user_answer.question.text }}</td>
+      <td>
+        {% if user_answer.text_answer %}
+          {{ user_answer.text_answer }}
+        {% else %}
+          {% for ans in user_answer.selected_answers.all %}
+            {{ ans.text }}<br>
+          {% endfor %}
+        {% endif %}
+      </td>
+      <td>{% if user_answer.is_correct %}✔{% else %}✘{% endif %}</td>
+      <td>{{ user_answer.question.explanation }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+<a href="{% url 'exams:grading_period_exam_list' %}" class="btn btn-link">Back to Exams</a>
 {% endblock %}

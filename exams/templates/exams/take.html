@@ -1,19 +1,35 @@
 
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% block title %}Take Exam - {{ exam.title }}{% endblock %}
 
 {% block content %}
-<div class="container exam-container">
+<div class="container quiz-container">
     <h1 class="mb-4">{{ exam.title }}</h1>
-    <div class="exam-info mb-4">
+    
+    {% if exam.description %}
+        <div class="alert alert-info mb-4">
+            {{ exam.description }}
+        </div>
+    {% endif %}
+    
+    <div class="quiz-info mb-4">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h5>Time Remaining: <span id="time-remaining">{{ exam.duration }}:00</span></h5>
+                        <h5>
+                            Time Remaining:
+                            <span id="time-remaining">
+                                {% if exam.time_limit > 0 %}
+                                  {{ exam.time_limit }}:00
+                                {% else %}
+                                  No limit
+                                {% endif %}
+                            </span>
+                        </h5>
                     </div>
                     <div>
-                        <h5>Questions: {{ exam.questions.count }}</h5>
+                        <h5>Questions: {{ questions|length }}</h5>
                     </div>
                 </div>
             </div>
@@ -22,55 +38,92 @@
 
     <form method="post" id="exam-form">
         {% csrf_token %}
-        {% for eq in exam.questions.all %}
+        {% for question in questions %}
         <div class="card mb-3 question-card">
             <div class="card-header">
                 <h5>Question {{ forloop.counter }}</h5>
+                <span class="badge bg-info">
+                    {{ question.get_question_type_display|default:question.question_type|capfirst }}
+                </span>
+                <small class="text-muted">
+                    {{ question.points }} point{{ question.points|pluralize }}
+                </small>
             </div>
             <div class="card-body">
-                <p class="card-text">{{ eq.question.text }}</p>
+                <p class="card-text">{{ question.text|safe }}</p>
                 <div class="answers">
-                    {% for answer in eq.question.answers.all %}
-                    <div class="form-check">
-                        <input class="form-check-input" type="radio" 
-                               name="question_{{ eq.question.id }}" 
-                               id="answer_{{ answer.id }}" 
-                               value="{{ answer.id }}">
-                        <label class="form-check-label" for="answer_{{ answer.id }}">
-                            {{ answer.text }}
-                        </label>
-                    </div>
-                    {% endfor %}
+                    {% if question.is_multiple_choice %}
+                        {% for answer in question.answers.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="question_{{ question.id }}"
+                                   id="answer_{{ question.id }}_{{ answer.id }}"
+                                   value="{{ answer.id }}" required>
+                            <label class="form-check-label" for="answer_{{ question.id }}_{{ answer.id }}">
+                                {{ answer.text }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% elif question.is_true_false %}
+                        {% for answer in question.answers.all %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio"
+                                   name="question_{{ question.id }}"
+                                   id="tf_{{ question.id }}_{{ answer.text|lower }}"
+                                   value="{{ answer.id }}" required>
+                            <label class="form-check-label" for="tf_{{ question.id }}_{{ answer.text|lower }}">
+                                {{ answer.text|title }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    {% elif question.is_identification %}
+                        <input type="text" class="form-control" name="question_{{ question.id }}_text" placeholder="Your answer here..." required>
+                    {% endif %}
                 </div>
             </div>
         </div>
         {% endfor %}
-        <button type="submit" class="btn btn-primary btn-lg">Submit Exam</button>
+        <div class="d-flex justify-content-between mb-3">
+            <button type="submit" class="btn btn-primary btn-lg">Submit Exam</button>
+            <a href="{% url 'exams:view_exam' exam.id %}" class="btn btn-secondary">Cancel</a>
+        </div>
     </form>
 </div>
 {% endblock %}
 
 {% block js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Timer implementation
-    let duration = {{ exam.duration }} * 60; // Convert to seconds
+{% if exam.time_limit > 0 %}
+    let duration = {{ exam.time_limit }} * 60; // Convert to seconds
     const timerElement = document.getElementById('time-remaining');
-
+    
     function updateTimer() {
         const minutes = Math.floor(duration / 60);
         const seconds = duration % 60;
         timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-
+        
         if (duration <= 0) {
             document.getElementById('exam-form').submit();
         } else {
             duration--;
             setTimeout(updateTimer, 1000);
         }
+        
+        // Add warning class when less than 5 minutes remain
+        if (duration < 300) {
+            timerElement.classList.add('text-danger');
+            timerElement.classList.add('fw-bold');
+        }
     }
-
     updateTimer();
+{% endif %}
+
+// Prevent accidental navigation (optional: keep if you wish to warn users)
+window.addEventListener('beforeunload', function(e) {
+    if (!document.getElementById('exam-form').checkValidity()) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+    }
 });
 </script>
 {% endblock %}

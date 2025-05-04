@@ -1,10 +1,20 @@
 
+
 {% extends 'base.html' %}
 {% block title %}Add Questions to {{ exam.title }}{% endblock %}
 
 {% block content %}
 <div class="container">
     <h1 class="mb-4">Add Questions to {{ exam.title }}</h1>
+    
+    {% if error %}
+    <div class="alert alert-danger">
+        <strong>{{ error }}</strong>
+    </div>
+    {% endif %}
+    
+    <!-- Validation Warning Alert -->
+    <div id="client-warning" class="alert alert-danger" style="display:none;"></div>
     
     <div class="row">
         <div class="col-md-5">
@@ -13,10 +23,72 @@
                     <h5>Add Question</h5>
                 </div>
                 <div class="card-body">
-                    <form method="post">
+                    <form method="post" id="question-form">
                         {% csrf_token %}
-                        {{ form.as_p }}
-                        <button type="submit" class="btn btn-primary">Add Question</button>
+                        {% for field in question_form %}
+                            <div class="form-group mb-3">
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% if field.errors %}
+                                    <div class="text-danger">
+                                        {% for error in field.errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                        
+                        <div id="identification-answer-section" style="display: none;">
+                            <label for="id_correct_answer">Correct Answer<span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="correct_answer" id="id_correct_answer" maxlength="500" autocomplete="off" value="{{ request.POST.correct_answer|default:'' }}">
+                        </div>
+                        
+                        <div id="answer-formset-section">
+                            <h6 class="mt-4">Answers</h6>
+                            {% if answer_formset.non_form_errors %}
+                                <div class="alert alert-danger">
+                                    {% for error in answer_formset.non_form_errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {{ answer_formset.management_form }}
+                            <div id="answers-container">
+                                {# This content will be controlled by JS for true/false; native rendering for others #}
+                                {% for form in answer_formset %}
+                                    <div class="answer-form mb-3 p-2 border rounded {% if form.errors %}border-danger{% endif %}">
+                                        {{ form.id }}
+                                        <div class="form-check mb-2">
+                                            {{ form.is_correct }}
+                                            <label class="form-check-label" for="{{ form.is_correct.id_for_label }}">
+                                                Correct Answer
+                                            </label>
+                                        </div>
+                                        {{ form.text }}
+                                        {% if form.text.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.text.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        {% if form.is_correct.errors %}
+                                            <div class="text-danger">
+                                                {% for error in form.is_correct.errors %}
+                                                    {{ error }}
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-theme-primary">Add Question</button>
                     </form>
                 </div>
             </div>
@@ -25,23 +97,40 @@
         <div class="col-md-7">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5>Exam Questions ({{ exam_questions.count }})</h5>
-                    <a href="{% url 'exams:exam_list' %}" class="btn btn-success">Finish</a>
+                    <h5>Exam Questions ({{ questions.count }})</h5>
+                    <a href="{% url 'exams:grading_period_exam_list' %}" class="btn btn-success">Finish</a>
                 </div>
                 <div class="card-body">
-                    <div class="sortable-questions">
-                        {% for eq in exam_questions %}
-                        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border rounded" 
-                             data-question-id="{{ eq.id }}" id="question-{{ eq.id }}">
-                            <div>
-                                <strong>Q{{ forloop.counter }}:</strong> 
-                                {{ eq.question.text|truncatewords:10 }}
-                                <span class="badge bg-secondary ms-2">{{ eq.points }} pt{{ eq.points|pluralize }}</span>
+                    <div id="questions-list">
+                        {% for question in questions %}
+                        <div class="question-item mb-3 p-3 border rounded" id="question-{{ question.id }}">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <strong>Q{{ forloop.counter }}:</strong> 
+                                    {{ question.text|truncatewords:10 }}
+                                    <span class="badge bg-info ms-2">{{ question.get_question_type_display }}</span>
+                                    <span class="badge bg-secondary ms-2">{{ question.points }} pt{{ question.points|pluralize }}</span>
+                                </div>
+                                <div>
+                                    <form method="post" action="{% url 'exams:delete_exam_question' exam.id question.id %}" style="display:inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
-                            <button class="btn btn-sm btn-danger" 
-                                    onclick="deleteExamQuestion({{ eq.id }})">
-                                Remove
-                            </button>
+                            
+                            <div class="answers mt-2">
+                                {% for answer in question.answers.all %}
+                                    <span class="badge {% if answer.is_correct %}bg-success{% else %}bg-light text-dark{% endif %}">
+                                        {{ answer.text|truncatewords:3 }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                            {% if question.explanation %}
+                                <div class="mt-2 small text-muted">{{ question.explanation }}</div>
+                            {% endif %}
                         </div>
                         {% empty %}
                         <div class="alert alert-info">No questions added yet.</div>
@@ -56,8 +145,185 @@
 
 {% block js %}
 <script>
-const examId = {{ exam.id }};
-const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+// Utility to make true/false answer forms just like in quizzes app
+function renderTrueFalseAnswers(container, mgmtForm) {
+    // Clear out container
+    container.innerHTML = "";
+
+    // True answer
+    const trueDiv = document.createElement('div');
+    trueDiv.className = 'answer-form mb-3 p-2 border rounded';
+    trueDiv.innerHTML = `
+        <input type="hidden" name="answers-0-id" id="id_answers-0-id">
+        <div class="form-check mb-2">
+            <input type="checkbox" name="answers-0-is_correct" id="id_answers-0-is_correct" class="form-check-input">
+            <label class="form-check-label" for="id_answers-0-is_correct">Correct Answer</label>
+        </div>
+        <input type="text" name="answers-0-text" value="True" readonly class="form-control" id="id_answers-0-text">
+    `;
+
+    // False answer
+    const falseDiv = document.createElement('div');
+    falseDiv.className = 'answer-form mb-3 p-2 border rounded';
+    falseDiv.innerHTML = `
+        <input type="hidden" name="answers-1-id" id="id_answers-1-id">
+        <div class="form-check mb-2">
+            <input type="checkbox" name="answers-1-is_correct" id="id_answers-1-is_correct" class="form-check-input">
+            <label class="form-check-label" for="id_answers-1-is_correct">Correct Answer</label>
+        </div>
+        <input type="text" name="answers-1-text" value="False" readonly class="form-control" id="id_answers-1-text">
+    `;
+
+    container.appendChild(trueDiv);
+    container.appendChild(falseDiv);
+
+    // Update formset management form
+    document.getElementById('id_answers-TOTAL_FORMS').value = 2;
+}
+
+function setAnswerSectionVisibility(qtype) {
+    const answerSection = document.getElementById('answer-formset-section');
+    const identificationSection = document.getElementById('identification-answer-section');
+    if (qtype === 'identification') {
+        answerSection.style.display = 'none';
+        identificationSection.style.display = 'block';
+    } else {
+        identificationSection.style.display = 'none';
+        answerSection.style.display = 'block';
+    }
+}
+
+function updateAnswerSection() {
+    const qtype = document.getElementById('id_question_type').value;
+    setAnswerSectionVisibility(qtype);
+    const addBtn = document.getElementById('add-answer-btn');
+    const answersContainer = document.getElementById('answers-container');
+    const mgmtForm = document.querySelector('#answer-formset-section .management-form');
+
+    if (qtype === 'true_false') {
+        // Show only two static, prefilled answer inputs for true/false
+        if (addBtn) addBtn.style.display = 'none';
+        renderTrueFalseAnswers(answersContainer, mgmtForm);
+        attachSingleCheckboxSelect('#answers-container');
+    } else {
+        // For all other question types
+        if (addBtn) addBtn.style.display = 'inline-block';
+        // If coming from a previous true_false, re-render server-side formset fields
+        // Do nothing here, forms are rendered by Django and not altered
+        attachSingleCheckboxSelect('#answers-container');
+    }
+}
+
+// Ensure only one checkbox checked at a time in answers container
+function attachSingleCheckboxSelect(containerQuery) {
+    // Detach all previous listeners (defensive)
+    const container = document.querySelector(containerQuery);
+    if (!container) return;
+
+    // Remove old listeners and add a named event handler
+    // We'll use event delegation to simplify for dynamic forms
+    container.removeEventListener('change', window._singleCBHandler, true);
+    window._singleCBHandler = function(event) {
+        // Only respond to is_correct checkboxes
+        const target = event.target;
+        if (
+            target &&
+            target.matches("input[type='checkbox'][name$='-is_correct']")
+        ) {
+            // Uncheck all boxes except the just-checked one if checked
+            if (target.checked) {
+                const cbs = container.querySelectorAll("input[type='checkbox'][name$='-is_correct']");
+                cbs.forEach(function(cb) {
+                    if (cb !== target) {
+                        cb.checked = false;
+                    }
+                });
+            }
+        }
+    };
+    container.addEventListener('change', window._singleCBHandler, true);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const questionTypeSelect = document.getElementById('id_question_type');
+    if (questionTypeSelect) {
+        questionTypeSelect.addEventListener('change', updateAnswerSection);
+        updateAnswerSection();
+    }
+    
+    // Attach single-checkbox handler on answers-container after page load
+    attachSingleCheckboxSelect('#answers-container');
+
+    // Add answer fields for non-True/False as in quizzes app
+    const addButton = document.getElementById('add-answer-btn');
+    if (addButton) {
+        addButton.addEventListener('click', function() {
+            const qtype = document.getElementById('id_question_type').value;
+            if (qtype === 'true_false' || qtype === 'identification') {
+                return; // Cannot add more answers
+            }
+            const totalForms = document.getElementById('id_answers-TOTAL_FORMS');
+            const container = document.getElementById('answers-container');
+            let formNum = parseInt(totalForms.value);
+
+            const newForm = document.createElement('div');
+            newForm.className = 'answer-form mb-3 p-2 border rounded';
+            newForm.innerHTML = `
+                <input type="hidden" name="answers-${formNum}-id" id="id_answers-${formNum}-id">
+                <div class="form-check mb-2">
+                    <input type="checkbox" name="answers-${formNum}-is_correct" id="id_answers-${formNum}-is_correct" class="form-check-input">
+                    <label class="form-check-label" for="id_answers-${formNum}-is_correct">Correct Answer</label>
+                </div>
+                <input type="text" name="answers-${formNum}-text" class="form-control" id="id_answers-${formNum}-text">
+            `;
+            container.appendChild(newForm);
+            formNum++;
+            totalForms.value = formNum;
+            
+            // Re-attach single checkbox handler after adding new form
+            attachSingleCheckboxSelect('#answers-container');
+        });
+    }
+
+    // Client side validation as before (can be enhanced)
+    const questionForm = document.getElementById('question-form');
+    questionForm.addEventListener('submit', function(event) {
+        const qtype = document.getElementById('id_question_type').value;
+        let warning = "";
+        let preventSubmit = false;
+        const warningDiv = document.getElementById('client-warning');
+        warningDiv.style.display = 'none';
+        warningDiv.innerHTML = "";
+        if (qtype === 'identification') {
+            const answerInput = document.getElementById('id_correct_answer');
+            if (!answerInput.value.trim()) {
+                warning = "Correct answer cannot be blank for Identification type.";
+                preventSubmit = true;
+            }
+        } else {
+            let isCorrectChecked = false;
+            const answerSection = document.getElementById('answers-container');
+            if (answerSection) {
+                const checkboxes = answerSection.querySelectorAll('input[type="checkbox"],input[type="radio"]');
+                for (let box of checkboxes) {
+                    if (box.checked) {
+                        isCorrectChecked = true;
+                        break;
+                    }
+                }
+            }
+            if (!isCorrectChecked) {
+                warning = "Please choose a correct answer before adding the question.";
+                preventSubmit = true;
+            }
+        }
+        if (preventSubmit) {
+            event.preventDefault();
+            warningDiv.style.display = 'block';
+            warningDiv.innerHTML = warning;
+            return false;
+        }
+    });
+});
 </script>
-<script src="{% static 'exams/js/script.js' %}"></script>
 {% endblock %}

@@ -1,7 +1,6 @@
-
 {% extends 'base.html' %}
 
-{% block title %}Create Exam{% endblock %}
+{% block title %}Edit Exam - {{ exam.title }}{% endblock %}
 
 {% block content %}
 <div class="container py-5">
@@ -10,9 +9,10 @@
             <div class="card border-0 shadow-sm grading-period-card">
                 <div class="card-body p-5 d-flex flex-column align-items-center">
                     <h2 class="card-title fw-bold text-primary mb-4" style="font-size:2.2rem;">
-                        <i class="bi bi-plus-circle me-1"></i> Create Exam
+                        <i class="bi bi-pencil-square me-1"></i> Edit Exam
                     </h2>
-                    <form method="post" action="" class="w-100 mt-3" enctype="multipart/form-data">
+                    <h5 class="fw-semibold mb-2">{{ exam.title }}</h5>
+                    <form method="post" action="" class="w-100 mt-3">
                         {% csrf_token %}
                         {% for field in form %}
                             <div class="mb-3">
@@ -28,13 +28,18 @@
                         {% endfor %}
                         <div class="d-flex gap-3 mt-4">
                             <button type="submit" class="btn btn-theme-primary btn-lg px-4">
-                                <i class="bi bi-check-circle me-1"></i> Create
+                                <i class="bi bi-check-circle me-1"></i> Save Changes
                             </button>
                             <a href="{% url 'exams:grading_period_exam_list' %}" class="btn btn-secondary btn-lg px-4">
                                 <i class="bi bi-arrow-left me-1"></i> Back to Exams
                             </a>
                         </div>
                     </form>
+                </div>
+                <div class="card-footer bg-white border-0 pt-3 px-5 d-flex justify-content-between align-items-center">
+                    <div>
+                        <span class="theme-muted">Last updated: {{ exam.updated_at|date:"M d, Y H:i" }}</span>
+                    </div>
                 </div>
             </div>
         </div>
