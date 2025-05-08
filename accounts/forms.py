@@ -10,10 +10,13 @@ class RegistrationForm(forms.ModelForm):
     
     class Meta:
         model = User
-        fields = ['student_id', 'username', 'first_name', 'middle_name', 'last_name', 'profile_pic']
+        fields = ['student_id', 'username', 'first_name', 'middle_name', 'last_name', 'profile_pic', 'section', 'year_level']
         widgets = {
-            'profile_pic': forms.FileInput(attrs={'accept': 'image/*'})
+            'profile_pic': forms.FileInput(attrs={'accept': 'image/*'}),
+            'year_level': forms.Select(),
         }
+
+
     
     def clean_password2(self):
         password1 = self.cleaned_data.get('password1')
@@ -48,9 +51,11 @@ class LoginForm(AuthenticationForm):
 class ProfileUpdateForm(forms.ModelForm):
     class Meta:
         model = User
-        fields = ['first_name', 'middle_name', 'last_name', 'student_id', 'username', 'profile_pic']
+        fields = ['first_name', 'middle_name', 'last_name', 'student_id', 'username', 'profile_pic', 'section', 'year_level']
         widgets = {
-            'profile_pic': forms.FileInput(attrs={'accept': 'image/*'})
+            'profile_pic': forms.FileInput(attrs={'accept': 'image/*'}),
+            'section': forms.TextInput(attrs={'placeholder': 'Enter section'}),
+            'year_level': forms.Select()
         }
 
 class CustomPasswordResetForm(PasswordResetForm):

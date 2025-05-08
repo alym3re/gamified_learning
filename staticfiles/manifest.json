@@ -1,7 +1,7 @@
 {
-  "name": "Gamified Learning System",
-  "short_name": "GLS",
-  "description": "An interactive gamified learning platform",
+  "name": "APS Learning System",
+  "short_name": "APSLS",
+  "description": "A learning platform for advanced probability and statistics.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

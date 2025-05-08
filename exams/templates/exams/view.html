@@ -12,7 +12,6 @@
             <li class="breadcrumb-item active app-brand" aria-current="page">
                 {{ exam.get_grading_period_display }}
             </li>
-            <li class="breadcrumb-item active app-brand" aria-current="page">{{ exam.title }}</li>
         </ol>
     </nav>
 
@@ -22,50 +21,10 @@
             <!-- Exam Details Card -->
             <div class="quiz-card card grading-period-card border-0 shadow-sm mb-5">
                 <div class="card-header bg-white pb-3 pt-4 px-4 border-0">
-                    <div class="d-flex justify-content-between align-items-start flex-wrap">
-                        <h2 class="mb-0 fw-bold" style="font-size:2.1rem; line-height:1.1;">{{ exam.title }}</h2>
-                        <div class="d-flex gap-2 flex-wrap">
-                            {% if request.user.is_staff %}
-                                <a href="{% url 'exams:add_exam_questions' exam.id %}" class="btn btn-theme-muted btn-lg d-flex align-items-center ms-3 mt-2 mt-lg-0">
-                                    <i class="bi bi-pencil-square me-2"></i> Edit Questions
-                                </a>
-                                <a href="{% url 'exams:edit_exam' exam.id %}" class="btn btn-theme-muted btn-lg d-flex align-items-center ms-3 mt-2 mt-lg-0">
-                                    <i class="bi bi-pencil me-2"></i> Edit Exam
-                                </a>
-                                {% if exam.locked %}
-                                    <a href="{% url 'exams:unlock_exam' exam.id %}" class="btn btn-warning btn-lg d-flex align-items-center ms-2">
-                                        <i class="bi bi-unlock me-2"></i> Unlock Exam
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'exams:lock_exam' exam.id %}" class="btn btn-secondary btn-lg d-flex align-items-center ms-2">
-                                        <i class="bi bi-lock-fill me-2"></i> Lock Exam
-                                    </a>
-                                {% endif %}
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body p-4">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                        <small class="theme-muted me-2 mb-2" style="font-size:1.13rem;">
-                            Uploaded on <span id="uploaded-date"
-                            data-datetime="{{ exam.created_at|date:"c" }}">{{ exam.created_at|date:"M d, Y H:i" }}</span>
-                            by
-                            <strong>{{ exam.created_by.get_full_name|default:exam.created_by.username }}</strong>
-                        </small>
-                        <span class="theme-muted d-flex align-items-center mb-2" style="font-size:1.07rem;">
-                            <i class="bi bi-eye me-1"></i>{{ exam.view_count }} views
-                        </span>
-                    </div>
-                    {# Exam Thumbnail if any (customize if your model has one) #}
-                    {# <img src="{{ exam.thumbnail.url }}" class="img-fluid rounded mb-4 w-100 theme-shadow" alt="{{ exam.title }}" style="max-height:22rem;object-fit:cover;"/> #}
-                    <div class="quiz-content mb-4" style="font-size:1.17rem;">
-                        {{ exam.description|linebreaksbr }}
-                    </div>
+                    <h2 class="mb-0 fw-bold" style="font-size:2.1rem; line-height:1.1;">{{ exam.title }}</h2>
+
                     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-                        <span class="badge" style="background:var(--primary-color);color:#fff;font-size:1.02rem;padding:0.65em 1.1em;">
-                            <i class="bi bi-calendar-week me-1"></i> {{ exam.get_grading_period_display }}
-                        </span>
+
                         <span class="badge bg-light theme-muted border" style="font-size:1.01rem;">
                             <i class="bi bi-eye me-1"></i> {{ exam.view_count }} Views
                         </span>
@@ -86,13 +45,42 @@
                         </span>
                         {% endif %}
                     </div>
+
+                </div>
+                <div class="card-body p-4">
+                    <div class="quiz-content mb-4" style="font-size:1.17rem;">
+                        {{ exam.description|linebreaksbr }}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-start flex-wrap">
+                        <div class="d-flex gap-2 flex-wrap">
+                            {% if request.user.is_staff %}
+                                <a href="{% url 'exams:add_exam_questions' exam.id %}" class="btn btn-theme-primary btn-lg d-flex align-items-center ms-2 mt-2 mt-lg-0">
+                                    <i class="bi bi-pencil-square me-2"></i> Edit Questions
+                                </a>
+                                <a href="{% url 'exams:edit_exam' exam.id %}" class="btn btn-theme-primary btn-lg d-flex align-items-center ms-2 mt-2 mt-lg-0">
+                                    <i class="bi bi-pencil me-2"></i> Edit Exam
+                                </a>
+                                {% if exam.locked %}
+                                    <a href="{% url 'exams:unlock_exam' exam.id %}" class="btn btn-theme-maroon-outline btn-lg d-flex align-items-center ms-2 mt-2 mt-lg-0">
+                                        <i class="bi bi-unlock me-2"></i> Unlock Exam
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'exams:lock_exam' exam.id %}" class="btn btn-theme-primary btn-lg d-flex align-items-center ms-2 mt-2 mt-lg-0">
+                                        <i class="bi bi-lock-fill me-2"></i> Lock Exam
+                                    </a>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                    </div>
+
                     {% if not exam.locked and not request.user.is_staff %}
                         {% if completed %}
                             <span class="btn btn-success mb-2 disabled" style="font-size:1.17rem;">
                               <i class="bi bi-check-circle me-1"></i> Completed
                             </span>
                         {% else %}
-                            <a href="{% url 'exams:take_exam' exam.id %}" class="btn btn-primary mb-2">Take Exam</a>
+                            <a href="{% url 'exams:take_exam' exam.id %}" class="btn btn-theme-primary mb-2">Take Exam</a>
                         {% endif %}
                     {% elif exam.locked and not request.user.is_staff %}
                         <span class="btn btn-danger mb-2 disabled" style="font-size:1.17rem;">
@@ -122,6 +110,9 @@
                                         {{ answer.text }}{% if answer.is_correct %} <span class="badge bg-success">Correct</span>{% endif %}
                                     </li>
                                 {% endfor %}
+                                {% if question.answers.all|length == 0 %}
+                                    <li><span class="text-muted">No answers specified for this question.</span></li>
+                                {% endif %}
                             </ul>
                             {% if question.explanation %}
                                 <div class="text-muted">{{ question.explanation }}</div>
@@ -226,6 +217,36 @@
 </div>
 
 <style>
+
+.btn-theme-maroon-outline {
+    letter-spacing: .01em;
+    font-weight: 600;
+    border-radius: 10px;
+    background: #fff;
+    color: #762730;
+    border: 2px solid #762730;
+    transition: background 0.15s, color 0.15s;
+}
+.btn-theme-maroon-outline:hover,
+.btn-theme-maroon-outline:focus {
+    background: #762730;
+    color: #fff;
+}
+
+.btn-theme-primary {
+    background: var(--primary-color);
+    color: #fff;
+    border: none;
+    box-shadow: none;
+    font-weight: 600;
+    letter-spacing: .01em;
+    transition: background 0.1s;
+}
+.btn-theme-primary:hover, .btn-theme-primary:focus {
+    background: var(--secondary-color);
+    color: #fff;
+}
+
 body {
     font-family: 'Poppins', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }

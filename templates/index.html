@@ -5,15 +5,21 @@
 {% block navbar %}{% endblock %}
 
 {% block content %}
-<div class="w-100 min-vh-100 h-100 d-flex justify-content-center align-items-center bg-white px-3 px-md-0">
-    <div class="d-flex flex-column align-items-center justify-content-center">
+<div class="w-100 min-vh-100 h-100 d-flex justify-content-center align-items-center bg-white px-3 px-md-0 position-relative">
+    <img src="{% static 'images/oc_logo.jpg' %}" class="img-fluid rounded mb-4" 
+    style="max-width:600px;
+        position=absolute;
+        opacity:0.1 ;">
+    <div class="d-flex flex-column align-items-center justify-content-center position-absolute">
+        
         <img src="{% static 'images/logo.png' %}" class="img-fluid rounded mb-4" style="max-width:120px;">
-        <h4 class="fw-bold mb-3 text-primary text-center">
-            GAMIFIED LEARNING SYSTEM
-        </h4>
-        <p class="mb-4 text-primary text-center">
-            for Advance Probability and Statistics
-        </p>
+
+        <h5 class="fw-bold mb-3 text-primary text-center">
+            Advance Probability and Statistics
+        </h5>
+        <h2 class="fw-bold mb-3 text-primary text-center">
+            Learning System
+        </h2>
         <div class="d-flex flex-column flex-sm-row justify-content-center align-items-center gap-3 w-100">
             {% if user.is_authenticated %}
                 <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg px-4 fw-semibold shadow-sm w-100">
@@ -30,4 +36,13 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block css %}
+    <style>
+        body {
+            height: 100vh;
+            overflow: hidden;
+        }
+    </style>
 {% endblock %}

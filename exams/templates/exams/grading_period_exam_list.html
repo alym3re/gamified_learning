@@ -12,7 +12,7 @@
     <div class="row g-4">
         {% for period, stats in period_stats.items %}
         <div class="col-12 col-sm-6 col-md-6 col-lg-6">
-            <div class="grading-period-card card border-0 shadow-sm position-relative d-flex flex-column h-100">
+            <div class="grading-period-card card position-relative d-flex flex-column h-100">
                 {% if stats.exam and stats.exam.locked and not is_admin %}
                 <div class="locked-overlay d-flex flex-column align-items-center justify-content-center">
                     <i class="bi bi-lock-fill mb-3 theme-danger" style="font-size:2.8rem;"></i>
@@ -30,17 +30,8 @@
                       </div>
                     {% endif %}
 
-                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;">{{ stats.label }}</h3>
-                    <p class="mb-2 theme-muted" style="font-size:1.35rem;">
-                        <i class="bi bi-file-earmark-text me-1"></i>
-                        <span class="fw-medium">
-                            {% if stats.exam %}
-                                1 Exam: {{ stats.exam.title }}
-                            {% else %}
-                                No Exam Scheduled
-                            {% endif %}
-                        </span>
-                    </p>
+                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;"><i class="bi bi-journal-text"></i> {{ stats.label }}</h3>
+                    
                     <p class="mb-4 theme-muted" style="font-size:1.25rem;">
                         <i class="bi bi-eye me-1"></i>
                         <span class="fw-medium">{{ stats.view_count|default:"0" }} Views</span>
@@ -48,28 +39,19 @@
                     {% if is_admin %}
                         <form method="post" action="{% url 'exams:toggle_period_lock' period %}" class="w-100 mt-1">
                             {% csrf_token %}
+                            {% if stats.exam %}
                             <button type="submit"
-                              class="btn btn-lg w-100 shadow-none {% if stats.exam and stats.exam.locked %}btn-theme-success{% else %}btn-theme-danger{% endif %}">
+                              class="btn btn-lg w-100 shadow-none {% if stats.exam and stats.exam.locked %}btn-theme-primary{% else %}btn-theme-maroon-outline{% endif %}">
                                 <i class="bi {% if stats.exam and stats.exam.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %} me-1"></i>
                                 <span style="font-size:1.18rem;">{% if stats.exam and stats.exam.locked %}Unlock Period{% else %}Lock Period{% endif %}</span>
                             </button>
+                            {% endif %}
                         </form>
                         {% if not stats.exam %}
                           <a href="{% url 'exams:create_exam' %}?grading_period={{ period }}"
                              class="btn btn-lg w-100 shadow-none btn-theme-primary mb-2 mt-3">
                             <i class="bi bi-plus-circle me-1"></i>
                             <span style="font-size:1.18rem;">Create Exam</span>
-                          </a>
-                        {% else %}
-                          <a href="{% url 'exams:edit_exam' stats.exam.id %}"
-                             class="btn btn-lg w-100 shadow-none btn-theme-info mb-2 mt-3">
-                            <i class="bi bi-pencil-square me-1"></i>
-                            <span style="font-size:1.18rem;">Edit Exam</span>
-                          </a>
-                          <a href="{% url 'exams:add_exam_questions' stats.exam.id %}"
-                             class="btn btn-lg w-100 shadow-none btn-theme-muted mb-2">
-                            <i class="bi bi-question-circle me-1"></i>
-                            <span style="font-size:1.18rem;">Questions</span>
                           </a>
                         {% endif %}
                     {% else %}
@@ -105,13 +87,29 @@
     </div>
 </div>
 <style>
+
+.btn-theme-maroon-outline {
+    font-size: 1.13rem;
+    font-weight: 600;
+    border-radius: 10px;
+    background: #fff;
+    color: #762730;
+    border: 2px solid #762730;
+    transition: background 0.15s, color 0.15s;
+    padding: 0.75rem 1.1rem;
+}
+.btn-theme-maroon-outline:hover,
+.btn-theme-maroon-outline:focus {
+    background: #762730;
+    color: #fff;
+}
 body {
     background: var(--light-color);
 }
 .grading-period-card {
     border-radius: 14px;
     background: #fff;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.08),0 1.5px 5px rgba(86, 113, 156,.02);
+    box-shadow: 5px rgba(0,0,0,0.20s);
     overflow: hidden;
     position: relative;
     transition: box-shadow 0.18s;

@@ -48,13 +48,16 @@ class ExamMultipleAnswerForm(ExamAnswerForm):
     pass
 
 class ExamTrueFalseAnswerForm(ExamAnswerForm):
-    """Form specifically for True/False questions"""
+    """Form specifically for True/False questions - always shows True and False options."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['text'].widget = forms.Select(
-            choices=[('True', 'True'), ('False', 'False')],
-            attrs={'class': 'form-select'}
-        )
+        # Override the text field: it should only be 'True' or 'False'
+        self.fields['text'].widget = forms.HiddenInput()
+        
+    def clean(self):
+        cleaned_data = super().clean()
+        # Enforce only True or False as the text
+        return cleaned_data
 
 class ExamShortAnswerForm(ExamAnswerForm):
     """Form for short answer/identification questions"""
@@ -63,7 +66,38 @@ class ExamShortAnswerForm(ExamAnswerForm):
         self.fields['is_correct'].widget = forms.HiddenInput()
         self.fields['is_correct'].initial = True
 
-ExamAnswerFormSet = forms.inlineformset_factory(
+
+class ExamFillInTheBlanksForm(forms.ModelForm):
+    class Meta:
+        model = ExamQuestion
+        fields = ['text', 'question_type', 'explanation', 'points', 'order']
+        widgets = {
+            'text': forms.Textarea(attrs={
+                'rows': 3,
+                'class': 'form-control',
+                'placeholder': 'Type your question and use [blank] for blanks e.g. "The capital of France is [blank]."'
+            }),
+            'question_type': forms.HiddenInput(),
+            'explanation': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'points': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
+            'order': forms.NumberInput(attrs={'min': 0, 'class': 'form-control'}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        text = cleaned.get('text', '')
+        blanks_count = text.count('[blank]')
+
+        # blank_answers[] will come in via POST (must match blanks)
+        answers = self.data.getlist('blank_answers[]')
+        if blanks_count != len(answers):
+            raise forms.ValidationError("Number of blanks ([blank]) must match the number of answers provided.")
+        cleaned['answers_list'] = answers
+        return cleaned
+
+from django.forms import inlineformset_factory
+
+ExamAnswerFormSet = inlineformset_factory(
     ExamQuestion, ExamAnswer, form=ExamAnswerForm, extra=2, can_delete=True, min_num=2
 )
 
@@ -75,33 +109,23 @@ ExamMultipleAnswerFormSet = forms.inlineformset_factory(
     ExamQuestion, ExamAnswer, form=ExamMultipleAnswerForm, extra=4, can_delete=True, min_num=2, max_num=4
 )
 
+# For true/false: always make two forms, one for 'True', one for 'False'
 ExamTrueFalseFormSet = forms.inlineformset_factory(
-    ExamQuestion, ExamAnswer, form=ExamTrueFalseAnswerForm, extra=2, can_delete=True, min_num=2, max_num=2
+    ExamQuestion, ExamAnswer, form=ExamTrueFalseAnswerForm, extra=2, can_delete=False, min_num=2, max_num=2
 )
 
 ExamShortAnswerFormSet = forms.inlineformset_factory(
     ExamQuestion, ExamAnswer, form=ExamShortAnswerForm, extra=1, can_delete=True, min_num=1, max_num=1
 )
 
+
 def get_answer_formset_for_question_type(question_type):
-    """
-    Returns the appropriate answer formset class for a given question type.
-    
-    This function maps question types to their corresponding formset classes,
-    ensuring compatibility across the application. It handles both 'short_answer'
-    and 'identification' as synonyms for the same formset type.
-    
-    Args:
-        question_type (str): The type of question (e.g., 'multiple_choice', 'true_false')
-        
-    Returns:
-        FormSet: The appropriate formset class for the question type
-    """
     formset_map = {
         'multiple_choice': ExamMultipleChoiceFormSet,
         'multiple_answer': ExamMultipleAnswerFormSet,
         'true_false': ExamTrueFalseFormSet,
         'short_answer': ExamShortAnswerFormSet,
-        'identification': ExamShortAnswerFormSet,  # Added for compatibility
+        'identification': ExamShortAnswerFormSet,
+        'fill_in_the_blanks': None,
     }
     return formset_map.get(question_type, ExamAnswerFormSet)

@@ -76,7 +76,7 @@
                             </label>
                         </div>
                         {% endfor %}
-                    {% elif question.is_identification %}
+                    {% elif question.is_identification or question.is_fill_in_the_blanks %}
                         <input type="text" class="form-control" name="question_{{ question.id }}_text" placeholder="Your answer here..." required>
                     {% endif %}
                 </div>

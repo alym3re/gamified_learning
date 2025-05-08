@@ -6,6 +6,7 @@
 
 
 {% block content %}
+<div class="background-overlay"></div>
 <div class="auth-bg d-flex align-items-center min-vh-100 py-5">
   <div class="container">
     <div class="row justify-content-center">
@@ -54,6 +55,18 @@
                   {{ form.last_name }}
                 </div>
               </div>
+
+              
+              <div class="row">
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.year_level.id_for_label }}" class="form-label">Year Level</label>
+                  {{ form.year_level }}
+                </div>
+                <div class="col-md-6 mb-3">
+                  <label for="{{ form.section.id_for_label }}" class="form-label">Section</label>
+                  {{ form.section }}
+                </div>
+              </div>
               
               <div class="mb-3">
                 <label for="{{ form.profile_pic.id_for_label }}" class="form-label">Profile Picture</label>
@@ -98,6 +111,20 @@
 
 {% block css %}
 <style>
+
+  .background-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("{% static 'images/oc_bg.png' %}");
+    background-size: cover;
+    background-repeat: no-repeat;
+    background-position: center;
+    opacity: 0.1;
+  }
+
   .auth-card form input,
   .auth-card form select,
   .auth-card form textarea {

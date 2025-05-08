@@ -144,8 +144,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 AUTH_USER_MODEL = 'accounts.User'
 
 # PWA Settings
-PWA_APP_NAME = 'Gamified Learning System'
-PWA_APP_DESCRIPTION = "A gamified learning platform"
+PWA_APP_NAME = 'APS Learning System'
+PWA_APP_DESCRIPTION = "A learning platform for advanced probability and statistics."
 PWA_APP_THEME_COLOR = '#762730'
 PWA_APP_BACKGROUND_COLOR = '#ffffff'
 PWA_APP_DISPLAY = 'standalone'

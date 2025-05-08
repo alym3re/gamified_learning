@@ -12,6 +12,15 @@ class User(AbstractUser):
     profile_pic = models.ImageField(upload_to=profile_pic_path, blank=True, null=True)
     date_joined = models.DateTimeField(auto_now_add=True)
     last_updated = models.DateTimeField(auto_now=True)
+    section = models.CharField(max_length=20, blank=True, null=True)
+
+    YEAR_LEVEL_CHOICES = [
+        ('1', '1st Year'),
+        ('2', '2nd Year'),
+        ('3', '3rd Year'),
+        ('4', '4th Year'),
+    ]
+    year_level = models.CharField(max_length=1, choices=YEAR_LEVEL_CHOICES, blank=True, null=True)
     
     def __str__(self):
         return f"{self.get_full_name()} ({self.student_id})"

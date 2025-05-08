@@ -1,9 +1,10 @@
-
+Exam'.">
 {% extends 'base.html' %}
 
 {% block title %}Create Exam{% endblock %}
 
 {% block content %}
+
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-12 col-md-10 col-lg-8">
@@ -12,21 +13,37 @@
                     <h2 class="card-title fw-bold text-primary mb-4" style="font-size:2.2rem;">
                         <i class="bi bi-plus-circle me-1"></i> Create Exam
                     </h2>
+
+                    {% if grading_period_label %}
+                        <div class="alert alert-info mb-4 w-100 text-center py-2">
+                            <strong>Selected Grading Period:</strong>
+                            <span style="font-size:1.25rem; margin-left:4px;">{{ grading_period_label }}</span>
+                        </div>
+                    {% endif %}
+
                     <form method="post" action="" class="w-100 mt-3" enctype="multipart/form-data">
                         {% csrf_token %}
-                        {{ form.as_p }}
-                        {% comment %} {% for field in form %}
-                            <div class="mb-3">
-                                <label for="{{ field.id_for_label }}" class="form-label fw-medium">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}
-                                    <div class="form-text">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% for error in field.errors %}
-                                    <div class="text-danger small">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                        {% endfor %} {% endcomment %}
+
+                        {# Hide 'title' and 'grading_period' fields, fill title programmatically #}
+                        {% for field in form %}
+                            {% if field.name == "title" %}
+                                <input type="hidden" name="title" value="{{ grading_period_label }} Exam">
+                            {% elif field.name == "grading_period" %}
+                                <input type="hidden" name="grading_period" value="{{ grading_period }}">
+                            {% else %}
+                                <div class="mb-3">
+                                    <label for="{{ field.id_for_label }}" class="form-label fw-medium">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <div class="form-text">{{ field.help_text }}</div>
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                        <div class="text-danger small">{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+
                         <div class="d-flex gap-3 mt-4">
                             <button type="submit" class="btn btn-theme-primary btn-lg px-4">
                                 <i class="bi bi-check-circle me-1"></i> Create
@@ -36,7 +53,6 @@
                             </a>
                         </div>
                     </form>
-
                 </div>
             </div>
         </div>

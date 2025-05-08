@@ -11,7 +11,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import models
 from django.views.decorators.http import require_POST
 from .models import Exam, ExamQuestion, ExamAnswer, ExamAttempt, ExamUserAnswer, EXAM_GRADING_PERIOD_CHOICES, EXAM_QUESTION_TYPE_CHOICES
-from .forms import ExamForm, ExamQuestionForm, ExamAnswerForm, ExamAnswerFormSet, ExamMultipleChoiceFormSet, ExamTrueFalseFormSet
+from .forms import ExamForm, ExamQuestionForm, ExamAnswerForm, ExamAnswerFormSet, ExamMultipleChoiceFormSet, ExamTrueFalseFormSet, ExamFillInTheBlanksForm
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib.admin.views.decorators import staff_member_required
@@ -141,113 +141,93 @@ def get_answer_formset_for_question_type(question_type):
 
 @login_required
 def add_exam_questions(request, exam_id):
-    """
-    Robust view to add questions to an Exam.
-    Applies patterns from the quizzes app: consistently validates both question and answers,
-    always shows relevant errors, saves data within an atomic transaction, and DRYs up repeated code.
-    """
     exam = get_object_or_404(Exam, id=exam_id)
-    # Permission: only staff and exam creator
     if not request.user.is_staff or exam.created_by != request.user:
         messages.error(request, "You don't have permission to edit this exam.")
         return redirect('exams:exam_by_period', grading_period=exam.grading_period)
 
-    # Default for GET and fallback
     default_question_type = 'multiple_choice'
     error_message = None
 
     if request.method == 'POST':
-        question_form = ExamQuestionForm(request.POST)
         qtype = request.POST.get('question_type', default_question_type)
-        AnswerFormSet = get_answer_formset_for_question_type(qtype)
-        answer_formset = AnswerFormSet(request.POST, prefix='answers')
+        if qtype == 'fill_in_the_blanks':
+            question_form = ExamFillInTheBlanksForm(request.POST)
+            answer_formset = None
+        else:
+            question_form = ExamQuestionForm(request.POST)
+            AnswerFormSet = get_answer_formset_for_question_type(qtype)
+            answer_formset = AnswerFormSet(request.POST, prefix='answers') if AnswerFormSet else None
 
-        if question_form.is_valid():
+        if question_form.is_valid() and (answer_formset is None or answer_formset.is_valid()):
             with transaction.atomic():
                 question = question_form.save(commit=False)
                 question.exam = exam
                 question.save()
-                # Save answers depending on type
-                if qtype.startswith('multiple') or qtype == 'true_false':
-                    answer_formset = AnswerFormSet(request.POST, prefix='answers', instance=question)
-                    if answer_formset.is_valid():
+
+                if qtype == 'fill_in_the_blanks':
+                    # Save each blank as an ExamAnswer
+                    answers_list = question_form.cleaned_data['answers_list']
+                    for blank_answer in answers_list:
+                        ExamAnswer.objects.create(
+                            question=question,
+                            text=blank_answer.strip(),
+                            is_correct=True
+                        )
+                elif qtype == 'true_false':
+                    # Ensure exactly two ExamAnswer options: True and False
+                    if answer_formset is not None:
+                        answers = answer_formset.save(commit=False)
+                        # Delete any existing answers first
+                        ExamAnswer.objects.filter(question=question).delete()
+                        # Create True and False options
+                        for idx, answer in enumerate(answers):
+                            answer.question = question
+                            answer.text = 'True' if idx == 0 else 'False'
+                            answer.save()
+                else:
+                    # For multiple choice and other types
+                    if answer_formset is not None:
                         answers = answer_formset.save(commit=False)
                         for answer in answers:
                             answer.question = question
                             answer.save()
-                        # Ensure at least one correct answer is marked
-                        if not any(answer.is_correct for answer in answers):
-                            error_message = "At least one answer must be marked as correct."
-                            transaction.set_rollback(True)
-                            break_out = True
-                        else:
-                            break_out = False
-                    else:
-                        error_message = "Error in answers"
-                        break_out = True
-
-                    if break_out:
-                        # Undo the question save if answers are bad or missing correct
-                        question.delete()
-                        return render(
-                            request, 'exams/add_questions.html', {
-                                'exam': exam,
-                                'question_form': question_form,
-                                'answer_formset': answer_formset,
-                                'questions': exam.get_ordered_questions(),
-                                'error': error_message,
-                            }
-                        )
-                elif qtype == 'identification':
-                    answer_text = request.POST.get('correct_answer', '').strip()
-                    if not answer_text:
-                        # Undo the question save if missing correct identification answer
-                        question.delete()
-                        error_message = "Correct answer cannot be blank for Identification type."
-                        return render(
-                            request, 'exams/add_questions.html', {
-                                'exam': exam,
-                                'question_form': question_form,
-                                'answer_formset': answer_formset,
-                                'questions': exam.get_ordered_questions(),
-                                'error': error_message,
-                            }
-                        )
-                    ExamAnswer.objects.create(
-                        question=question,
-                        text=answer_text,
-                        is_correct=True
-                    )
+                        answer_formset.save_m2m()
+                        
                 messages.success(request, 'Question added successfully!')
                 return redirect('exams:add_exam_questions', exam_id=exam.id)
         else:
-            error_message = "Invalid question form"
-            # Ensure to show the form with existing POST data and correct formset
-            qtype = request.POST.get('question_type', default_question_type)
-            AnswerFormSet = get_answer_formset_for_question_type(qtype)
-            answer_formset = AnswerFormSet(request.POST, prefix='answers')
-            return render(
-                request, 'exams/add_questions.html', {
-                    'exam': exam,
-                    'question_form': question_form,
-                    'answer_formset': answer_formset,
-                    'questions': exam.get_ordered_questions(),
-                    'error': error_message,
-                }
-            )
+            error_message = "Invalid question or answer form"
     else:
-        # GET just builds empty forms with default
-        question_form = ExamQuestionForm()
-        AnswerFormSet = get_answer_formset_for_question_type(default_question_type)
-        answer_formset = AnswerFormSet(prefix='answers')
+        qtype = request.GET.get('question_type', default_question_type)
+        if qtype == 'fill_in_the_blanks':
+            question_form = ExamFillInTheBlanksForm(initial={'question_type': 'fill_in_the_blanks'})
+            answer_formset = None
+        else:
+            question_form = ExamQuestionForm(initial={'question_type': qtype})
+            AnswerFormSet = get_answer_formset_for_question_type(qtype)
+            
+            if qtype == 'true_false' and AnswerFormSet:
+                # Pre-fill with "True" and "False"
+                answer_formset = AnswerFormSet(
+                    prefix='answers',
+                    initial=[
+                        {'text': 'True', 'is_correct': False},
+                        {'text': 'False', 'is_correct': False}
+                    ]
+                )
+            else:
+                answer_formset = AnswerFormSet(prefix='answers') if AnswerFormSet else None
 
     questions = exam.get_ordered_questions()
     return render(request, 'exams/add_questions.html', {
         'exam': exam,
         'question_form': question_form,
         'answer_formset': answer_formset,
-        'questions': questions
+        'questions': questions,
+        'error': error_message,
     })
+
 
 @login_required
 def take_exam(request, exam_id):

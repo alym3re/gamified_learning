@@ -14,6 +14,7 @@ EXAM_QUESTION_TYPE_CHOICES = [
     ('multiple_choice', 'Multiple Choice'),
     ('true_false', 'True/False'),
     ('identification', 'Identification'),
+    ('fill_in_the_blanks', 'Fill in the Blanks'),
 ]
 
 
@@ -26,7 +27,7 @@ class Exam(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     time_limit = models.PositiveIntegerField(help_text="Time limit in minutes (0 for no limit)", default=0)
     passing_score = models.PositiveIntegerField(help_text="Percentage required to pass", default=70)
-    locked = models.BooleanField(default=False, help_text="Lock this exam for non-admin users")
+    locked = models.BooleanField(default=True, help_text="Lock this exam for non-admin users")
     shuffle_questions = models.BooleanField(default=False)
     show_correct_answers = models.BooleanField(help_text="Show correct answers after submission", default=True)
     grading_period = models.CharField(max_length=10, choices=EXAM_GRADING_PERIOD_CHOICES, default='prelim')
@@ -77,7 +78,8 @@ class Exam(models.Model):
         ORDER_MAP = {
             'multiple_choice': 0,
             'true_false': 1,
-            'identification': 2
+            'fill_in_the_blanks': 2,
+            'identification': 3,
         }
         questions = list(self.questions.all())
         # First sort by 'order', then by question_type mapped by custom order
@@ -110,6 +112,9 @@ class ExamQuestion(models.Model):
     def is_identification(self):
         return self.question_type == 'identification'
 
+    def is_fill_in_the_blanks(self):
+        return self.question_type == 'fill_in_the_blanks'
+        
 class ExamAnswer(models.Model):
     question = models.ForeignKey(ExamQuestion, on_delete=models.CASCADE, related_name='answers')
     text = models.CharField(max_length=500)
@@ -205,7 +210,7 @@ class ExamUserAnswer(models.Model):
             correct_answers = set(question.answers.filter(is_correct=True).values_list('id', flat=True))
             selected = set(self.selected_answers.values_list('id', flat=True))
             self.is_correct = correct_answers == selected
-        elif question.is_identification():
+        elif question.is_identification() or question.is_fill_in_the_blanks():
             correct_answers = [a.text.lower().strip() for a in question.answers.filter(is_correct=True)]
             if self.text_answer:
                 user_ans = self.text_answer.lower().strip()
