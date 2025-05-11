@@ -70,10 +70,11 @@ class Exam(models.Model):
         
     def get_ordered_questions(self):
         """
-        Returns questions grouped by type and in this order:
+        Returns questions grouped by type in this order:
         1. Multiple Choice
         2. True/False
-        3. Identification
+        3. Fill in the Blanks
+        4. Identification
         """
         ORDER_MAP = {
             'multiple_choice': 0,
@@ -82,10 +83,10 @@ class Exam(models.Model):
             'identification': 3,
         }
         questions = list(self.questions.all())
-        # First sort by 'order', then by question_type mapped by custom order
+        # Sort by question_type mapped by custom order
         return sorted(
             questions,
-            key=lambda q: (ORDER_MAP.get(q.question_type, 99), q.order)
+            key=lambda q: ORDER_MAP.get(q.question_type, 99)
         )
 
 class ExamQuestion(models.Model):
@@ -94,10 +95,9 @@ class ExamQuestion(models.Model):
     question_type = models.CharField(max_length=20, choices=EXAM_QUESTION_TYPE_CHOICES, default='multiple_choice')
     explanation = models.TextField(blank=True)
     points = models.PositiveIntegerField(default=1)
-    order = models.PositiveIntegerField(default=0)
     
     class Meta:
-        ordering = ['order']
+        pass
 
     def __str__(self):
         label = dict(EXAM_QUESTION_TYPE_CHOICES).get(self.question_type, self.question_type)
@@ -114,6 +114,24 @@ class ExamQuestion(models.Model):
 
     def is_fill_in_the_blanks(self):
         return self.question_type == 'fill_in_the_blanks'
+        
+    def blanks_count(self):
+        """
+        Returns the number of blanks for fill-in-the-blanks questions,
+        based on the number of correct answers stored.
+        """
+        if not self.is_fill_in_the_blanks():
+            return 0
+        return self.answers.filter(is_correct=True).count()
+
+    def total_points(self):
+        """
+        For fill-in-the-blanks, total points should be points multiplied by number of blanks.
+        For other questions, it's self.points.
+        """
+        if self.is_fill_in_the_blanks():
+            return self.points * self.blanks_count()
+        return self.points
         
 class ExamAnswer(models.Model):
     question = models.ForeignKey(ExamQuestion, on_delete=models.CASCADE, related_name='answers')
@@ -181,12 +199,27 @@ class ExamAttempt(models.Model):
             return "0 seconds"
 
     def calculate_score(self):
-        # Calculate actual points, total possible, and percent
-        gained_pts = sum(
-            q.points for q in self.exam.questions.all()
-            if self.user_answers.filter(question=q, is_correct=True).exists()
-        )
-        total_pts = sum(q.points for q in self.exam.questions.all())
+        """
+        Calculate score with per-blank points for fill_in_the_blanks questions.
+        """
+        gained_pts = 0
+        total_pts = 0
+        
+        for q in self.exam.questions.all():
+            if q.is_fill_in_the_blanks():
+                # Per-blank calculation
+                user_ans = self.user_answers.filter(question=q).first()
+                blanks_count = q.blanks_count()
+                per_blank_pts = q.points
+                correct_blanks = user_ans.partial_score if user_ans else 0
+                total_pts += per_blank_pts * blanks_count
+                gained_pts += per_blank_pts * correct_blanks
+            else:
+                # Standard calculation for other question types
+                total_pts += q.points
+                if self.user_answers.filter(question=q, is_correct=True).exists():
+                    gained_pts += q.points
+                    
         self.raw_points = gained_pts
         self.total_points = total_pts
         self.score = (gained_pts / total_pts) * 100 if total_pts else 0
@@ -200,6 +233,7 @@ class ExamUserAnswer(models.Model):
     selected_answers = models.ManyToManyField(ExamAnswer, blank=True, related_name='exam_user_selected_answers')
     text_answer = models.TextField(blank=True, null=True)
     is_correct = models.BooleanField(default=False)
+    partial_score = models.PositiveIntegerField(default=0, help_text="Number of correct blanks for fill-in-the-blanks questions")
 
     class Meta:
         unique_together = ('attempt', 'question')
@@ -210,12 +244,30 @@ class ExamUserAnswer(models.Model):
             correct_answers = set(question.answers.filter(is_correct=True).values_list('id', flat=True))
             selected = set(self.selected_answers.values_list('id', flat=True))
             self.is_correct = correct_answers == selected
-        elif question.is_identification() or question.is_fill_in_the_blanks():
+            self.partial_score = 1 if self.is_correct else 0
+        elif question.is_identification():
             correct_answers = [a.text.lower().strip() for a in question.answers.filter(is_correct=True)]
             if self.text_answer:
                 user_ans = self.text_answer.lower().strip()
                 self.is_correct = user_ans in correct_answers
+                self.partial_score = 1 if self.is_correct else 0
             else:
                 self.is_correct = False
+                self.partial_score = 0
+        elif question.is_fill_in_the_blanks():
+            correct_answers = [a.text.lower().strip() for a in question.answers.filter(is_correct=True)]
+            if self.text_answer:
+                user_blanks = [b.strip().lower() for b in self.text_answer.split('|')]
+                # Partial credit: Each blank must match its correct answer
+                correct_count = 0
+                for idx, ca in enumerate(correct_answers):
+                    # For out of bounds, can't be matched
+                    if idx < len(user_blanks) and user_blanks[idx] == ca:
+                        correct_count += 1
+                self.partial_score = correct_count
+                self.is_correct = (correct_count == len(correct_answers))
+            else:
+                self.is_correct = False
+                self.partial_score = 0
         self.save()
         return self.is_correct

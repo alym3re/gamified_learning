@@ -21,13 +21,12 @@ class ExamForm(forms.ModelForm):
 class ExamQuestionForm(forms.ModelForm):
     class Meta:
         model = ExamQuestion
-        fields = ['text', 'question_type', 'explanation', 'points', 'order']
+        fields = ['text', 'question_type', 'explanation', 'points']
         widgets = {
             'text': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'question_type': forms.Select(attrs={'class': 'form-select'}),
             'explanation': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'points': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
-            'order': forms.NumberInput(attrs={'min': 0, 'class': 'form-control'}),
         }
 
 class ExamAnswerForm(forms.ModelForm):
@@ -70,7 +69,7 @@ class ExamShortAnswerForm(ExamAnswerForm):
 class ExamFillInTheBlanksForm(forms.ModelForm):
     class Meta:
         model = ExamQuestion
-        fields = ['text', 'question_type', 'explanation', 'points', 'order']
+        fields = ['text', 'question_type', 'explanation', 'points']
         widgets = {
             'text': forms.Textarea(attrs={
                 'rows': 3,
@@ -79,8 +78,11 @@ class ExamFillInTheBlanksForm(forms.ModelForm):
             }),
             'question_type': forms.HiddenInput(),
             'explanation': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
-            'points': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
-            'order': forms.NumberInput(attrs={'min': 0, 'class': 'form-control'}),
+            'points': forms.NumberInput(attrs={
+                'min': 1, 
+                'class': 'form-control',
+                'help_text': 'Points per blank'
+            }),
         }
 
     def clean(self):
@@ -93,6 +95,7 @@ class ExamFillInTheBlanksForm(forms.ModelForm):
         if blanks_count != len(answers):
             raise forms.ValidationError("Number of blanks ([blank]) must match the number of answers provided.")
         cleaned['answers_list'] = answers
+        # Points field represents points per blank
         return cleaned
 
 from django.forms import inlineformset_factory

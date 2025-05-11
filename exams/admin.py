@@ -27,7 +27,7 @@ class ExamAdmin(admin.ModelAdmin):
 
 @admin.register(ExamQuestion)
 class ExamQuestionAdmin(admin.ModelAdmin):
-    list_display = ('text', 'exam', 'question_type', 'points', 'order', 'answer_count')
+    list_display = ('text', 'exam', 'question_type', 'points', 'answer_count')
     list_filter = ('exam', 'question_type')
     search_fields = ('text', 'exam__title')
     inlines = [ExamAnswerInline]

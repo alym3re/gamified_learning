@@ -19,7 +19,21 @@
 
                 <p>
                 <strong>Your Answer:</strong>
-                {% if user_answer and user_answer.selected_answer %}
+                {% if eq.question.is_fill_in_the_blanks %}
+                    {% with user_blanks=user_answer.text_answer|default:""|split:"|" %}
+                        {% for blank in user_blanks %}
+                            <span>
+                              Blank {{ forloop.counter }}: {{ blank }}
+                              {% if blank|lower == eq.question.answers.all|slice:forloop.counter0|stringformat:"s"|attr:"text"|lower %}
+                                <span class="badge bg-success">Correct</span>
+                              {% else %}
+                                <span class="badge bg-danger">Incorrect</span>
+                              {% endif %}
+                            </span><br>
+                        {% endfor %}
+                        <span>Score: {{ user_blanks|length }} / {{ eq.question.answers.all|length }}</span>
+                    {% endwith %}
+                {% elif user_answer and user_answer.selected_answer %}
                     {{ user_answer.selected_answer.text }}
                     {% if user_answer.is_correct %}
                         <span class="badge bg-success ms-2">Correct</span>
