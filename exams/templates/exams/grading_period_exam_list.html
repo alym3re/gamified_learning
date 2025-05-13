@@ -30,18 +30,18 @@
                       </div>
                     {% endif %}
 
-                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;"><i class="bi bi-journal-text"></i> {{ stats.label }}</h3>
+                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;"> {{ stats.label }}</h3>
                     
-                    <p class="mb-4 theme-muted" style="font-size:1.25rem;">
-                        <i class="bi bi-eye me-1"></i>
-                        <span class="fw-medium">{{ stats.view_count|default:"0" }} Views</span>
-                    </p>
+
+                    
+                </div>
+                <div class="card-footer bg-white border-0 pt-0 pb-5 px-5">
                     {% if is_admin %}
                         <form method="post" action="{% url 'exams:toggle_period_lock' period %}" class="w-100 mt-1">
                             {% csrf_token %}
                             {% if stats.exam %}
                             <button type="submit"
-                              class="btn btn-lg w-100 shadow-none {% if stats.exam and stats.exam.locked %}btn-theme-primary{% else %}btn-theme-maroon-outline{% endif %}">
+                              class="btn btn-lg w-100 shadow-none mb-2 {% if stats.exam and stats.exam.locked %}btn-theme-primary{% else %}btn-theme-maroon-outline{% endif %}">
                                 <i class="bi {% if stats.exam and stats.exam.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %} me-1"></i>
                                 <span style="font-size:1.18rem;">{% if stats.exam and stats.exam.locked %}Unlock Period{% else %}Lock Period{% endif %}</span>
                             </button>
@@ -49,15 +49,14 @@
                         </form>
                         {% if not stats.exam %}
                           <a href="{% url 'exams:create_exam' %}?grading_period={{ period }}"
-                             class="btn btn-lg w-100 shadow-none btn-theme-primary mb-2 mt-3">
+                             class="btn btn-lg w-100 shadow-none btn-theme-primary mb-2 mt-3 mb-2">
                             <i class="bi bi-plus-circle me-1"></i>
                             <span style="font-size:1.18rem;">Create Exam</span>
                           </a>
                         {% endif %}
                     {% else %}
                     {% endif %}
-                </div>
-                <div class="card-footer bg-white border-0 pt-0 pb-5 px-5">
+
                     {% if is_admin %}
                         {% if stats.exam %}
                             <a href="{% url 'exams:view_exam' stats.exam.id %}"

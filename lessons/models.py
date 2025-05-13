@@ -20,7 +20,7 @@ class Lesson(models.Model):
     )
     title = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True)
-    description = models.TextField(help_text="Lesson description (Markdown supported)")
+    description = models.TextField(help_text="Lesson description")
     file = models.FileField(upload_to=lesson_file_path)
     thumbnail = models.ImageField(upload_to='lesson_thumbnails/', blank=True, null=True)
     uploaded_by = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)

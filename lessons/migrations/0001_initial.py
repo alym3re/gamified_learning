@@ -30,7 +30,7 @@ class Migration(migrations.Migration):
                 ('grading_period', models.CharField(choices=[('prelim', 'Prelim'), ('midterm', 'Midterm'), ('prefinal', 'Prefinal'), ('final', 'Final')], default='prelim', max_length=10)),
                 ('title', models.CharField(max_length=200)),
                 ('slug', models.SlugField(max_length=200, unique=True)),
-                ('description', models.TextField(help_text='Lesson description (Markdown supported)')),
+                ('description', models.TextField(help_text='Lesson description')),
                 ('file', models.FileField(upload_to=lessons.models.lesson_file_path)),
                 ('thumbnail', models.ImageField(blank=True, null=True, upload_to='lesson_thumbnails/')),
                 ('upload_date', models.DateTimeField(auto_now_add=True)),

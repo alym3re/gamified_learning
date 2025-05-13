@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 {% load static %}
 {% block title %}{{ lesson.title }} - Read{% endblock %}
@@ -43,7 +42,7 @@
             {% elif ext == ".pptx" %}
                 <!-- PPTXJS Integration centered, no file-input -->
                 <div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">
-                    <div id="your_div_id_result" style="width: 85vw; max-width:1200px; height: 80vh; min-height:450px; min-width:350px; background:#222; border-radius:10px; color:#FFF; overflow:auto; display:flex; align-items:center; justify-content:center;">
+                    <div id="your_div_id_result" style="width: 100%; height: 80vh; min-height:450px; background:#222; border-radius:10px; color:#FFF; overflow:auto; display:flex; align-items:center; justify-content:center;">
                         Loading PowerPoint file...
                     </div>
                 </div>
@@ -64,13 +63,15 @@
                 <script type="text/javascript">
                   // Wait for full page and scripts load
                   window.addEventListener('DOMContentLoaded', function() {
-                    // Defensive: check jQuery and plugin
                     function tryRenderPptx(tried) {
                         if (window.$ && typeof $("#your_div_id_result").pptxToHtml === "function") {
+                            // Dynamically calculate slidesScale based on container width
+                            const containerWidth = document.getElementById('your_div_id_result').offsetWidth;
+                            const slidesScale = containerWidth / 960; // Assuming 960px is the default slide width
+
                             $("#your_div_id_result").pptxToHtml({
                                 pptxFileUrl: "{{ lesson.file.url|escapejs }}",
-                                // No fileInputId passed!
-                                slidesScale: "",
+                                slidesScale: slidesScale, // Dynamically scale slides
                                 slideMode: false,
                                 keyBoardShortCut: false,
                                 mediaProcess: true,
@@ -78,7 +79,6 @@
                                 themeProcess: true,
                                 incSlide: {height: 2, width: 2},
                                 slideType: "divs2slidesjs"
-                                // Advanced options can be passed here if needed
                             });
                         } else if (tried < 12) {
                             setTimeout(function(){ tryRenderPptx(tried+1); }, 400);

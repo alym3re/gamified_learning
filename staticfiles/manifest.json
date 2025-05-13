@@ -1,6 +1,6 @@
 {
-  "name": "APS Learning System",
-  "short_name": "APSLS",
+  "name": "Gamified Android Learning Apllication",
+  "short_name": "GALA",
   "description": "A learning platform for advanced probability and statistics.",
   "start_url": "/",
   "display": "standalone",

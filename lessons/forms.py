@@ -17,7 +17,7 @@ class LessonForm(forms.ModelForm):
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
-            'description': 'Description (Markdown supported)',
+            'description': 'Description',
             'is_featured': 'Feature this lesson'
         }
         help_texts = {

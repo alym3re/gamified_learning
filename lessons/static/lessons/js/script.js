@@ -26,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Markdown editor for content field
     const contentField = document.getElementById('id_content');
     if (contentField) {
-        // Simple toolbar for markdown
         const toolbar = document.createElement('div');
         toolbar.className = 'markdown-toolbar mb-2';
         toolbar.innerHTML = `
