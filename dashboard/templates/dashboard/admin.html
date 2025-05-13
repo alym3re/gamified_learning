@@ -12,18 +12,17 @@
 
     <!-- ========== STAT SUMMARY CARDS ========== -->
     <div class="row g-4 mb-5">
-        <div class="col-sm-6 col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card border-maroon shadow h-100 text-center border-2">
                 <div class="card-body">
                     <div class="fs-1 fw-bold text-maroon mb-2">
                         <i class="bi bi-people"></i> {{ total_users }}
                     </div>
                     <div class="text-muted mb-2">Total Users</div>
-                    <span class="badge bg-success fs-6">+{{ new_users_week }} new this week</span>
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card border-primary shadow h-100 text-center border-2">
                 <div class="card-body">
                     <div class="fs-1 fw-bold text-primary mb-2">
@@ -33,7 +32,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card border-info shadow h-100 text-center border-2">
                 <div class="card-body">
                     <div class="fs-1 fw-bold text-info mb-2">
@@ -43,7 +42,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-sm-6 col-md-3">
+        <div class="col-6 col-md-3">
             <div class="card border-danger shadow h-100 text-center border-2">
                 <div class="card-body">
                     <div class="fs-1 fw-bold text-danger mb-2">
@@ -92,7 +91,7 @@
 
                                           
                     <!-- Lessons summary -->
-                      <div class="col-md-6 mb-2 text-center">
+                      <div class="col-6 mb-2 text-center">
                         <span class="badge bg-light theme-muted border fs-5 py-2 px-3">
                             <i class="bi bi-book me-1"></i>
                             {{ stats.total_lessons|default:0 }} Lessons
@@ -100,7 +99,7 @@
                       </div>
                     
                       <!-- Quizzes summary -->
-                      <div class="col-md-6 mb-2 text-center">
+                      <div class="col-6 mb-2 text-center">
                           <span class="badge bg-light theme-muted border fs-5 py-2 px-3">
                               <i class="bi bi-question-circle me-1"></i>
                               {{ stats.quizzes|length|default:0 }} Quizzes
@@ -133,25 +132,31 @@
     <div class="row mt-5">
       <div class="col-12">
         <div class="card border-maroon shadow-lg rounded-4 mb-5">
-          <div class="card-header bg-white border-bottom-0 pb-0 rounded-top-4">
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <i class="bi bi-trophy-fill fs-2 text-maroon"></i>
-              <h4 class="fw-bold m-0 text-maroon" style="font-size: 2rem;">
-                Overall Student Rankings
-              </h4>
+          <div class="card-header bg-white border-bottom-0 pb-0 rounded-top-4 d-flex align-items-center justify-content-between">
+            <div>
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-trophy-fill fs-2 text-maroon"></i>
+                <h4 class="fw-bold m-0 text-maroon" style="font-size: 2rem;">
+                  Overall Student Rankings
+                </h4>
+              </div>
+              <p class="mb-0 text-muted small">Based on cumulative quiz and exam points</p>
             </div>
-            <p class="mb-0 text-muted small">Based on cumulative quiz and exam points</p>
+            <!-- Server-side DOCX Download Button -->
+            <a href="{% url 'download_rankings_docx' period_value='overall' %}?tables[]=overall" class="btn btn-outline-primary btn-sm" title="Download Official Rankings Word Document">
+              <i class="bi bi-download"></i> Download Rankings DOCX
+            </a>
           </div>
           <div class="card-body pt-3 pb-4">
             <div class="table-responsive">
-              <table class="table table-hover table-bordered align-middle rounded-4 shadow-sm overflow-hidden">
+              <table id="overall-student-ranking-table" class="table table-hover table-bordered align-middle rounded-4 shadow-sm overflow-hidden">
                 <thead class="text-center rounded-top-4">
                   <tr class="fw-semibold text-maroon bg-light">
                     <th class="bg-white rounded-start-3">Rank</th>
                     <th class="bg-white">Name</th>
-                    <th class="bg-white">Quiz Points</th>
-                    <th class="bg-white">Exam Points</th>
-                    <th class="bg-white rounded-end-3">Total Points</th>
+                    <th class="bg-white">Quiz Score</th>
+                    <th class="bg-white">Exam Score</th>
+                    <th class="bg-white rounded-end-3">Total Score</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -164,9 +169,9 @@
                       </span>
                     </td>
                     <td class="fw-semibold" style="letter-spacing:0.5px;">{{ stu.full_name }}</td>
-                    <td class="{% if stu.rank != 1 %}text-success{% endif %}">{{ stu.quiz_points|floatformat:2 }}</td>
-                    <td>{{ stu.exam_points|floatformat:2 }}</td>
-                    <td class="fw-semibold">{{ stu.total_points|floatformat:2 }}</td>
+                    <td class="{% if stu.rank != 1 %}text-success{% endif %}">{{ stu.quiz_points|floatformat:0 }}</td>
+                    <td>{{ stu.exam_points|floatformat:0 }}</td>
+                    <td class="fw-semibold">{{ stu.total_points|floatformat:0 }}</td>
                   </tr>
                   {% endfor %}
                   {% else %}
@@ -189,11 +194,18 @@
         <div class="modal fade theme-modal-soft" id="modalQuizRanking{{ period_value }}" tabindex="-1" aria-labelledby="modalQuizRankingLabel{{ period_value }}" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content rounded-3 border-0 overflow-hidden theme-shadow">
-                    <div class="modal-header bg-white border-0 px-4 pt-4 pb-3">
+                    <div class="modal-header bg-white border-0 px-4 pt-4 pb-3 d-flex justify-content-between align-items-center">
                         <h5 class="modal-title text-primary fw-bold" id="modalQuizRankingLabel{{ period_value }}">
                             <i class="bi bi-bar-chart me-2"></i>Quiz Rankings <span class="badge bg-primary ms-2 fs-6">{{ stats.label }}</span>
                         </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="d-flex align-items-center">
+                            <a href="{% url 'download_rankings_docx' period_value=period_value %}?tables[]=quizzes" class="btn btn-outline-primary btn-sm me-2" 
+                                title="Download Official Quiz Rankings Document">
+                                <i class="bi bi-download"></i> Download DOCX
+                            </a>
+                            
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
                     </div>
                     <div class="modal-body bg-light p-4">
                         <div class="theme-card-soft p-4 px-md-5 rounded-3 bg-white shadow-sm mb-3">
@@ -207,8 +219,8 @@
                                         <tr class="align-middle text-primary fw-semibold">
                                             <th class="rounded-start">Rank</th>
                                             <th>Student</th>
+                                            <th>Percentage</th>
                                             <th>Score</th>
-                                            <th>Points</th>
                                             <th class="rounded-end">Status</th>
                                         </tr>
                                     </thead>
@@ -218,13 +230,21 @@
                                             <td>#{{ rank.rank }}</td>
                                             <td class="fw-medium">{{ rank.student_name }}</td>
                                             <td>
-                                                <span class="badge  text-white fs-6">
-                                                    {{ rank.score }}
+                                                <span class="badge text-dark fs-6">
+                                                    {% if rank.score is not None %}
+                                                        {% if rank.score == rank.score|floatformat:0|add:"0" %}
+                                                            {{ rank.score|floatformat:0 }}%
+                                                        {% else %}
+                                                            {{ rank.score|floatformat:2 }}%
+                                                        {% endif %}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
                                                 </span>
                                             </td>
                                             <td>
                                                 <span class="badge bg-light text-dark border fs-6">
-                                                    {{ rank.earned_points }} / {{ rank.total_points }}
+                                                    {{ rank.earned_points|floatformat:0 }} / {{ rank.total_points|floatformat:0 }}
                                                 </span>
                                             </td>
                                             <td>
@@ -256,11 +276,17 @@
         <div class="modal fade theme-modal-soft" id="modalExamRanking{{ period_value }}" tabindex="-1" aria-labelledby="modalExamRankingLabel{{ period_value }}" aria-hidden="true">
             <div class="modal-dialog modal-lg modal-dialog-scrollable">
                 <div class="modal-content rounded-3 border-0 overflow-hidden theme-shadow">
-                    <div class="modal-header bg-white border-0 px-4 pt-4 pb-3">
+                    <div class="modal-header bg-white border-0 px-4 pt-4 pb-3 d-flex justify-content-between align-items-center">
                         <h5 class="modal-title text-maroon fw-bold" id="modalExamRankingLabel{{ period_value }}">
                             <i class="bi bi-graph-up-arrow me-2"></i>Exam Rankings <span class="badge border border-1 border-maroon text-maroon bg-white ms-2 fs-6">{{ stats.label }}</span>
                         </h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="d-flex align-items-center">
+                            <a href="{% url 'download_rankings_docx' period_value=period_value %}?tables[]=exams" class="btn btn-outline-primary btn-sm me-2" 
+                                title="Download Official Exam Rankings Document">
+                                <i class="bi bi-download"></i> Download DOCX
+                            </a>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
                     </div>
                     <div class="modal-body bg-light p-4">
                         <div class="theme-card-soft p-4 px-md-5 rounded-3 bg-white shadow-sm mb-3">
@@ -274,8 +300,8 @@
                                         <tr class="align-middle text-maroon fw-semibold">
                                             <th class="rounded-start">Rank</th>
                                             <th>Student</th>
+                                            <th>Percentage</th>
                                             <th>Score</th>
-                                            <th>Points</th>
                                             <th class="rounded-end">Status</th>
                                         </tr>
                                     </thead>
@@ -286,12 +312,20 @@
                                             <td class="fw-medium">{{ rank.student_name }}</td>
                                             <td>
                                                 <span class="badge text-maroon fs-6">
-                                                    {{ rank.score }}
+                                                    {% if rank.score is not None %}
+                                                        {% if rank.score == rank.score|floatformat:0|add:"0" %}
+                                                            {{ rank.score|floatformat:0 }}%
+                                                        {% else %}
+                                                            {{ rank.score|floatformat:2 }}%
+                                                        {% endif %}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
                                                 </span>
                                             </td>
                                             <td>
                                                 <span class="badge bg-light text-dark border fs-6">
-                                                    {{ rank.earned_points }} / {{ rank.total_points }}
+                                                    {{ rank.earned_points|floatformat:0 }} / {{ rank.total_points|floatformat:0 }}
                                                 </span>
                                             </td>
                                             <td>
@@ -437,4 +471,5 @@
     .theme-modal-soft .modal-header { padding-left: 1.3rem !important; padding-right: 1.3rem !important; }
 }
 </style>
+
 {% endblock %}

@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="mb-4 fw-bold text-primary" style="font-size:2.8rem;">
+        <i class="bi bi-people "></i> Students
+    </h1>
+    <form id="student-search-form" class="row gy-2 gx-2 align-items-end mb-4" autocomplete="off">
+        <div class="col-md-4">
+            <input type="text" name="query" class="form-control" placeholder="Search student..." value="{{ query }}">
+        </div>
+        <div class="col-md-3">
+            <select name="section" class="form-select">
+                <option value="">All Sections</option>
+                {% for s in sections %}
+                    <option value="{{ s }}" {% if s == section %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <select name="year_level" class="form-select">
+                <option value="">All Year Levels</option>
+                {% for y in year_levels %}
+                    <option value="{{ y.0 }}" {% if y.0 == year_level %}selected{% endif %}>{{ y.1 }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-none">
+            <button class="btn btn-primary w-100">Search</button>
+        </div>
+    </form>
+    <div class="row">
+        {% for student in students %}
+            <div class="col-md-3 mb-4">
+                <div class="card student-card h-100 shadow-sm" 
+                     data-student-id="{{ student.id }}" 
+                     data-fullname="{{ student.get_full_name }}"
+                     data-section="{{ student.section }}"
+                     data-year-level="{{ student.get_year_level_display }}"
+                     data-student-id-val="{{ student.student_id }}"
+                     data-profile-pic-url="{% if student.profile_pic %}{{ student.profile_pic.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}"
+                     data-username="{{ student.username }}"
+                     data-date-joined="{{ student.date_joined }}"
+                     data-last-updated="{{ student.last_updated }}">
+                    <img src="{% if student.profile_pic %}{{ student.profile_pic.url }}{% else %}{% static 'images/default-avatar.png' %}{% endif %}" 
+                         class="card-img-top rounded-circle border" alt="{{ student.get_full_name }}" style="object-fit:cover;height:180px;width:180px;margin:auto;display:block;">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">{{ student.get_full_name }}</h5>
+                        <p class="card-text mb-1"><b>Section:</b> {{ student.section|default:"N/A" }}</p>
+                        <p class="card-text"><b>Year:</b> {{ student.get_year_level_display|default:"N/A" }}</p>
+                    </div>
+                </div>
+            </div>
+        {% empty %}
+            <div class="col">
+                <div class="alert alert-info">No students found.</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Student Info Modal -->
+<div class="modal fade" id="studentInfoModal" tabindex="-1" aria-labelledby="studentInfoModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="studentInfoModalLabel">Student Info</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Filled by JS -->
+        <div class="d-flex align-items-center mb-3">
+          <img id="modalProfilePic" src="" alt="Profile" width="68" height="68" class="rounded-circle border me-3" style="object-fit:cover;">
+          <div>
+            <h4 id="modalFullName" class="mb-0"></h4>
+            <small id="modalUsername" class="text-muted"></small>
+          </div>
+        </div>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item"><b>Student ID:</b> <span id="modalStudentID"></span></li>
+            <li class="list-group-item"><b>Section:</b> <span id="modalSection"></span></li>
+            <li class="list-group-item"><b>Year Level:</b> <span id="modalYearLevel"></span></li>
+            <li class="list-group-item"><b>Date Joined:</b> <span id="modalDateJoined"></span></li>
+            <li class="list-group-item"><b>Last Updated:</b> <span id="modalLastUpdated"></span></li>
+        </ul>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- JS to handle opening modal with data -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Auto-submit form on input/select change
+    let searchForm = document.getElementById('student-search-form');
+    // For text input delay
+    let typingTimer;
+    let doneTypingInterval = 350;
+    let input = searchForm.querySelector('input[name="query"]');
+
+    input.addEventListener('input', function() {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(function() {
+            searchForm.submit();
+        }, doneTypingInterval);
+    });
+    ['section', 'year_level'].forEach(function(field) {
+        let elem = searchForm.querySelector(`[name="${field}"]`);
+        elem.addEventListener('change', function() {
+            searchForm.submit();
+        });
+    });
+
+    // Student modal
+    document.querySelectorAll('.student-card').forEach(function(card) {
+        card.addEventListener('click', function() {
+            document.getElementById('modalProfilePic').src = card.dataset.profilePicUrl;
+            document.getElementById('modalFullName').textContent = card.dataset.fullname;
+            document.getElementById('modalUsername').textContent = '@' + card.dataset.username;
+            document.getElementById('modalStudentID').textContent = card.dataset.studentIdVal;
+            document.getElementById('modalSection').textContent = card.dataset.section || 'N/A';
+            document.getElementById('modalYearLevel').textContent = card.dataset.yearLevel || 'N/A';
+            document.getElementById('modalDateJoined').textContent = (card.dataset.dateJoined||"").replace("T", " ").slice(0, 19);
+            document.getElementById('modalLastUpdated').textContent = (card.dataset.lastUpdated||"").replace("T", " ").slice(0, 19);
+
+            var myModal = new bootstrap.Modal(document.getElementById('studentInfoModal'));
+            myModal.show();
+        });
+    });
+});
+</script>
+{% endblock %}
+
+<style>
+.student-card { cursor:pointer; transition:box-shadow 0.15s; }
+.student-card:hover { box-shadow: 0 6px 30px 0 rgba(89, 110, 156, 0.16);}
+.card-img-top.rounded-circle {
+    border: 3px solid #d1e3ff;
+    background: #fff;
+}
+</style>
