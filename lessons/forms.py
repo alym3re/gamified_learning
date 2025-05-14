@@ -11,7 +11,7 @@ class LessonForm(forms.ModelForm):
             'grading_period': forms.Select(attrs={'class': 'form-select'}),
             'file': forms.ClearableFileInput(attrs={
                 'class': 'form-control',
-                'accept': '.pdf,.doc,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint'
+                'accept': '.pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint'
             }),
             'thumbnail': forms.ClearableFileInput(attrs={'class': 'form-control'}),
             'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -21,7 +21,7 @@ class LessonForm(forms.ModelForm):
             'is_featured': 'Feature this lesson'
         }
         help_texts = {
-            'file': 'Only .pdf, .doc, .docx, .pptx files are allowed.',
+            'file': 'Only .pdf, .doc, .docx files are allowed.',
             'thumbnail': 'Optional. Recommended size: 800x450px'
         }
 
@@ -31,5 +31,5 @@ class LessonForm(forms.ModelForm):
         import os
         ext = os.path.splitext(file.name)[1].lower()
         if ext not in allowed_exts:
-            raise forms.ValidationError("Only PDF, Word (.doc/.docx), and PowerPoint (.pptx) files are allowed.")
+            raise forms.ValidationError("Only PDF and Word (.doc/.docx) files are allowed.")
         return file

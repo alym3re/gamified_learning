@@ -12,6 +12,8 @@ from django.views.decorators.http import require_POST
 from django.utils.decorators import method_decorator
 from django.views.generic.edit import UpdateView
 from .models import Lesson, LessonProgress, LessonAccess, GRADING_PERIOD_CHOICES, PeriodLock
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 
 def grading_period_list(request):
     periods = GRADING_PERIOD_CHOICES
@@ -56,7 +58,7 @@ def lesson_list_by_period(request, grading_period):
     if grading_period not in valid_periods:
         messages.error(request, "Invalid grading period.")
         return redirect('lessons:grading_period_list')
-        
+
     lock_obj = PeriodLock.objects.filter(grading_period=grading_period).first()
     locked = lock_obj.locked if lock_obj else False
     user = request.user
@@ -231,24 +233,25 @@ def docx_to_html_with_mammoth(docx_path, media_url="/media/", media_root=None):
         # messages_ = result.messages
 
     return html
-    
+
 @login_required
 def read_file(request, slug):
     lesson = get_object_or_404(Lesson, slug=slug, is_active=True)
+
     # Check permissions for locked periods
     lock_obj = PeriodLock.objects.filter(grading_period=lesson.grading_period).first()
     locked = lock_obj.locked if lock_obj else False
     if locked and not request.user.is_staff:
         messages.error(request, "This lesson is in a locked grading period.")
         return redirect('lessons:grading_period_list')
-    
+
     # Record access
     LessonAccess.objects.create(user=request.user, lesson=lesson, access_type='view')
-    
+
     # Get file extension and absolute URL
     ext = os.path.splitext(lesson.file.name)[1].lower()
     file_absolute_url = request.build_absolute_uri(lesson.file.url)
-    
+
     # Mammoth conversion for .docx, saves HTML w/ images and styles
     if ext == ".docx" and (not hasattr(lesson, 'html_content') or not lesson.html_content or not lesson.html_content.strip()):
         html_content = docx_to_html_with_mammoth(
@@ -258,6 +261,7 @@ def read_file(request, slug):
         )
         lesson.html_content = html_content
         lesson.save(update_fields=['html_content'])
+
     # Fallback message for .doc
     elif ext == ".doc":
         html_content = (
@@ -267,10 +271,11 @@ def read_file(request, slug):
         if hasattr(lesson, 'html_content'):
             lesson.html_content = html_content
             lesson.save(update_fields=['html_content'])
-    
+
     return render(request, 'lessons/read_file.html', {
-        'lesson': lesson, 
-        'file_absolute_url': file_absolute_url
+        'lesson': lesson,
+        'file_absolute_url': file_absolute_url,
+        'ext': ext,
     })
 
 @user_passes_test(lambda u: u.is_staff)

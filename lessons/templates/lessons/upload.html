@@ -98,9 +98,9 @@
                                     name="{{ form.file.name }}"
                                     id="{{ form.file.id_for_label }}"
                                     class="form-control"
-                                    accept=".pdf,.doc,.docx,.pptx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/msword,application/vnd.ms-powerpoint"
+                                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                 >
-                                <small class="text-muted">Only .pdf, .doc, .docx, .pptx files are allowed.</small>
+                                <small class="text-muted">Only .pdf, .doc, .docx files are allowed.</small>
                                 {% if form.file.errors %}
                                     <div class="invalid-feedback d-block">{{ form.file.errors }}</div>
                                 {% endif %}
