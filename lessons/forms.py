@@ -4,7 +4,7 @@ from .models import Lesson, GRADING_PERIOD_CHOICES
 class LessonForm(forms.ModelForm):
     class Meta:
         model = Lesson
-        fields = ['title', 'description', 'grading_period', 'file', 'thumbnail', 'is_featured']
+        fields = ['title', 'description', 'grading_period', 'file', ]
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
             'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 5}),
@@ -13,16 +13,11 @@ class LessonForm(forms.ModelForm):
                 'class': 'form-control',
                 'accept': '.pdf,.doc,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint'
             }),
-            'thumbnail': forms.ClearableFileInput(attrs={'class': 'form-control'}),
-            'is_featured': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
         labels = {
-            'description': 'Description',
-            'is_featured': 'Feature this lesson'
-        }
+            'description': 'Description',        }
         help_texts = {
             'file': 'Only .pdf, .doc, .docx files are allowed.',
-            'thumbnail': 'Optional. Recommended size: 800x450px'
         }
 
     def clean_file(self):

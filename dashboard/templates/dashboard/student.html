@@ -2,6 +2,7 @@
 
 {% extends 'base.html' %}
 {% load dict_extras %}
+{% load percentage_extras %}
 {% block title %}My Dashboard{% endblock %}
 
 {% block content %}
@@ -25,11 +26,11 @@
                     </div>
                     <div class="mt-3">
                         <span class="text-dark fw-semibold">
-                            Points: 
+                            Score : 
                             {% if total_quiz_points is not None and total_exam_points is not None %}
-                                {{ total_quiz_points|default:0|floatformat:2 }} (Quizzes)
+                                {{ total_quiz_points|default:0|floatformat:0 }} (Quizzes)
                                 +
-                                {{ total_exam_points|default:0|floatformat:2 }} (Exams)
+                                {{ total_exam_points|default:0|floatformat:0 }} (Exams)
                             {% else %}
                                 -
                             {% endif %}
@@ -135,11 +136,11 @@
                         <div class="progress theme-progress" style="height: 24px;">
                             <div class="progress-bar theme-maroon d-flex align-items-center justify-content-center"
                                  role="progressbar"
-                                 style="width: {{ stats.lessons_progress_percent|default:0 }}%; font-size:1.11rem;"
-                                 aria-valuenow="{{ stats.lessons_progress_percent|default:0 }}"
+                                 style="width: {{ stats.lessons_progress_percent|default:0|smart_percent }}%; font-size:1.11rem;"
+                                 aria-valuenow="{{ stats.lessons_progress_percent|default:0|smart_percent }}"
                                  aria-valuemin="0"
                                  aria-valuemax="100">
-                                {{ stats.lessons_progress_percent }}%
+                                {{ stats.lessons_progress_percent|smart_percent }}%
                             </div>
                         </div>
                     </div>
@@ -159,11 +160,11 @@
                                 <span class="fw-semibold"><i class="bi bi-clipboard-data me-1"></i> {{ quiz.quiz_title }}</span>
                                 <span class="badge bg-primary ms-2">
                                   {% if quiz.earned_points is not None and quiz.total_points %}
-                                      {{ quiz.earned_points|floatformat:2 }}/{{ quiz.total_points|floatformat:2 }} points
-                                      ({{ quiz.score_percent }}%)
+                                      {{ quiz.earned_points|floatformat:0 }}/{{ quiz.total_points|floatformat:0 }} points
+                                      ({{ quiz.score_percent|smart_percent }}%)
                                   {% else %}
-                                      {{ quiz.score }}/{{ quiz.total_score }} 
-                                      ({{ quiz.score_percent }}%)
+                                      {{ quiz.score|floatformat:0 }}/{{ quiz.total_score|floatformat:0 }} 
+                                      ({{ quiz.score_percent|smart_percent }}%)
                                   {% endif %}
                                 </span>
                                 <span class="ms-2">Rank: <span class="fw-bold text-maroon">{% if quiz.placer %}{{ quiz.placer }}{% else %}-{% endif %}</span></span>
@@ -193,11 +194,11 @@
                                 <span class="fw-semibold"><i class="bi bi-file-earmark-text me-1"></i> {{ exam.exam_title }}</span>
                                 <span class="badge bg-warning ms-2">
                                   {% if exam.earned_points is not None and exam.total_points %}
-                                      {{ exam.earned_points|floatformat:2 }}/{{ exam.total_points|floatformat:2 }} points
-                                      ({{ exam.score_percent }}%)
+                                      {{ exam.earned_points|floatformat:0 }}/{{ exam.total_points|floatformat:0 }} points
+                                      ({{ exam.score_percent|smart_percent }}%)
                                   {% else %}
-                                      {{ exam.score }}/{{ exam.total_score }} 
-                                      ({{ exam.score_percent }}%)
+                                      {{ exam.score|floatformat:0 }}/{{ exam.total_score|floatformat:0 }} 
+                                      ({{ exam.score_percent|smart_percent }}%)
                                   {% endif %}
                                 </span>
                                 <span class="ms-2">Rank: <span class="fw-bold text-danger">{% if exam.placer %}{{ exam.placer }}{% else %}-{% endif %}</span></span>
@@ -235,9 +236,6 @@
 
 </div>
 
-<!-- Ensure you have Bootstrap Icons linked in your base.html, for example:
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
--->
 
 <style>
 .grading-period-card {

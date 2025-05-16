@@ -1,6 +1,7 @@
 
 {% extends 'base.html' %}
 {% load dict_extras %}
+{% load percentage_extras %}
 
 {% block title %}Quiz Grading Periods{% endblock %}
 
@@ -13,35 +14,26 @@
         {% for value, label in periods %}
         {% with stats=period_stats|get_item:value %}
         <div class="col-12 col-sm-6 col-md-6 col-lg-6">
-            <div class="grading-period-card card border-0 shadow-sm position-relative d-flex flex-column h-100">
+            <div class="grading-period-card card position-relative d-flex flex-column h-100">
                 {% if stats.locked and not user.is_staff %}
                 <div class="locked-overlay d-flex flex-column align-items-center justify-content-center">
-                    <i class="bi bi-lock-fill mb-3 theme-danger" style="font-size:2.8rem;"></i>
-                    <span class="locked-text">Locked</span>
+                    <i class="bi bi-lock-fill mb-3 text-light" style="font-size:2.8rem;"></i>
+                    <span class="locked-text text-light">Locked</span>
                 </div>
                 {% endif %}
                 <div class="card-body d-flex flex-column justify-content-between align-items-center p-5">
-                    <div class="period-status position-absolute top-0 end-0 m-3">
-                        {% if stats.locked %}
-                            <i class="bi bi-lock-fill theme-danger" title="Locked" style="font-size:1.6rem;"></i>
-                        {% else %}
-                            <i class="bi bi-unlock-fill theme-success" title="Unlocked" style="font-size:1.6rem;"></i>
-                        {% endif %}
-                    </div>
-                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;">{{ label }}</h3>
+                    <h3 class="card-title fw-semibold" style="font-size:2.1rem;">{{ label }}</h3>
                     <p class="mb-2 theme-muted" style="font-size:1.35rem;">
                         <i class="bi bi-file-earmark-text me-1"></i>
                         <span class="fw-medium">{{ stats.quiz_count|default:"0" }} Quizzes</span>
                     </p>
-                    <p class="mb-4 theme-muted" style="font-size:1.25rem;">
-                        <i class="bi bi-eye me-1"></i>
-                        <span class="fw-medium">{{ stats.view_count|default:"0" }} Views</span>
-                    </p>
+                </div>
+                <div class="card-footer bg-white border-0 pt-0 pb-5 px-5">
                     {% if user.is_staff %}
                         <form method="post" action="{% url 'quizzes:toggle_period_lock' value %}" class="w-100 mt-1">
                             {% csrf_token %}
                             <button type="submit"
-                              class="btn btn-lg w-100 shadow-none {% if stats.locked %}btn-theme-success{% else %}btn-theme-danger{% endif %}">
+                              class="btn btn-lg w-100 shadow-none mb-2 {% if stats.locked %}btn-theme-primary{% else %}btn-theme-maroon-outline{% endif %}">
                                 <i class="bi {% if stats.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %} me-1"></i>
                                 <span style="font-size:1.18rem;">{% if stats.locked %}Unlock Period{% else %}Lock Period{% endif %}</span>
                             </button>
@@ -49,19 +41,17 @@
                     {% else %}
                         <div class="w-100 mb-3 mt-3">
                             <div class="progress theme-progress" style="height: 28px;">
-                                <div class="progress-bar theme-info d-flex align-items-center justify-content-center"
+                                <div class="progress-bar  theme-maroon d-flex align-items-center justify-content-center"
                                      role="progressbar"
                                      style="width: {{ stats.progress_percent|default:"0" }}%; font-size:1.18rem;"
                                      aria-valuenow="{{ stats.progress_percent|default:"0" }}"
                                      aria-valuemin="0"
                                      aria-valuemax="100">
-                                    {{ stats.progress_percent|default:"0" }}%
+                                    {{ stats.progress_percent|default:"0"|smart_percent }}%
                                 </div>
                             </div>
                         </div>
                     {% endif %}
-                </div>
-                <div class="card-footer bg-white border-0 pt-0 pb-5 px-5">
                     {% if stats.locked and not user.is_staff %}
                       <button class="btn btn-theme-muted btn-lg w-100" style="font-size:1.15rem;" disabled>
                         <i class="bi bi-lock-fill me-1"></i> Locked
@@ -80,6 +70,11 @@
     </div>
 </div>
 <style>
+.theme-maroon {
+    background: #762730 !important;
+    color: #fff;
+    font-weight: 500;
+}
 body {
     background: var(--light-color);
 }
@@ -100,7 +95,7 @@ body {
 .locked-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(248,244,242,0.97); /* match --light-color as overlay bg */
+    background: rgb(118,39,48); /* match lessons/exam page overlay bg */
     z-index: 10;
     border-radius: 14px;
     display: flex;
@@ -134,6 +129,21 @@ body {
 }
 .theme-danger {
     color: var(--danger-color) !important;
+}
+.btn-theme-maroon-outline {
+    font-size: 1.13rem;
+    font-weight: 600;
+    border-radius: 10px;
+    background: #fff;
+    color: #762730;
+    border: 2px solid #762730;
+    transition: background 0.15s, color 0.15s;
+    padding: 0.75rem 1.1rem;
+}
+.btn-theme-maroon-outline:hover,
+.btn-theme-maroon-outline:focus {
+    background: #762730;
+    color: #fff;
 }
 .btn-theme-primary, .btn-theme-danger, .btn-theme-success, .btn-theme-muted  {
     font-size: 1.18rem;

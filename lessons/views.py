@@ -123,6 +123,10 @@ def upload_lesson(request):
     if not request.user.is_staff:
         messages.error(request, "You don't have permission to upload lessons.")
         return redirect('lessons:grading_period_list')
+    initial = {}
+    grading_period_display = None
+    if request.method == 'GET' and 'grading_period' in request.GET:
+        initial['grading_period'] = request.GET['grading_period']
     if request.method == 'POST':
         form = LessonForm(request.POST, request.FILES)
         if form.is_valid():
@@ -132,8 +136,21 @@ def upload_lesson(request):
             messages.success(request, 'Lesson uploaded successfully!')
             return redirect('lessons:view_lesson', slug=lesson.slug)
     else:
-        form = LessonForm()
-    return render(request, 'lessons/upload.html', {'form': form})
+        form = LessonForm(initial=initial)
+    
+    # Get current grading period key from the form (either initial or bound data)
+    current_gp = form['grading_period'].value()
+    if current_gp:
+        grading_period_display = dict(GRADING_PERIOD_CHOICES).get(current_gp, current_gp)
+        grading_period = current_gp
+    else:
+        grading_period = None
+    
+    return render(request, 'lessons/upload.html', {
+        'form': form,
+        'grading_period_display': grading_period_display,
+        'grading_period': grading_period,
+    })
 
 @method_decorator(login_required, name='dispatch')
 class LessonUpdateView(UpdateView):

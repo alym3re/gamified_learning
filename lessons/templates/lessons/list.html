@@ -11,7 +11,7 @@
         </div>
         {% if user.is_staff %}
         <div class="col-auto d-flex align-items-center">
-            <a href="{% url 'lessons:upload_lesson' %}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+            <a href="{% url 'lessons:upload_lesson' %}?grading_period={{ grading_period }}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
                 <i class="bi bi-plus-lg me-2" style="font-size:1.5rem;"></i>
                 <span style="font-size:1.17rem;">Add Lesson</span>
             </a>
@@ -23,18 +23,8 @@
         {% for lesson in page_obj %}
             {% if not lesson.is_archived %}
             <div class="col-12 col-md-6 col-lg-4 mb-4">
-                <div class="lesson-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0">
-                {% if lesson.thumbnail %}
-                    <img src="{{ lesson.thumbnail.url }}"
-                         class="lesson-thumbnail card-img-top"
-                         alt="{{ lesson.title }}"
-                         style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover;"/>
-                {% else %}
-                    <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
-                         style="height:16rem; border-radius:14px 14px 0 0;">
-                        <i class="bi bi-file-earmark-text theme-muted" style="font-size:3.5rem;"></i>
-                    </div>
-                {% endif %}
+                <div class="lesson-card card grading-period-card position-relative d-flex flex-column h-100 p-0">
+
                 <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
                     <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem;">{{ lesson.title }}</h4>
                     <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem;">
@@ -47,9 +37,6 @@
                        style="font-size:1.17rem;">
                         <i class="bi bi-box-arrow-in-right me-1"></i> View Lesson
                     </a>
-                    <span class="ms-3 theme-muted d-flex align-items-center" style="font-size:1.14rem;">
-                        <i class="bi bi-eye me-1"></i>{{ lesson.view_count }}
-                    </span>
                 </div>
             </div>
             </div>

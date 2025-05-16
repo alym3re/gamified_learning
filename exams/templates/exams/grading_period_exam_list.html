@@ -20,20 +20,17 @@
                 </div>
                 {% endif %}
                 <div class="card-body d-flex flex-column justify-content-between align-items-center p-5">
-                    {% if is_admin %}
-                      <div class="period-status position-absolute top-0 end-0 m-3">
-                        {% if stats.exam and stats.exam.locked %}
-                            <i class="bi bi-lock-fill theme-danger" title="Locked" style="font-size:1.6rem;"></i>
+                    <h3 class="card-title fw-semibold" style="font-size:2.1rem;"> {{ stats.label }}</h3>
+                    <p class="mb-2 theme-muted" style="font-size:1.35rem;">
+                        {% if stats.exam %}   
+                            <i class="bi bi-journal-check me-1"></i>
+                            <span class="fw-medium">Exam is Ready</span>
                         {% else %}
-                            <i class="bi bi-unlock-fill theme-success" title="Unlocked" style="font-size:1.6rem;"></i>
+                            <i class="bi bi-journal-x me-1"></i>
+                            <span class="fw-medium">No Exam Available</span>
                         {% endif %}
-                      </div>
-                    {% endif %}
+                    </p>
 
-                    <h3 class="card-title fw-semibold mb-3 mt-3" style="font-size:2.1rem;"> {{ stats.label }}</h3>
-                    
-
-                    
                 </div>
                 <div class="card-footer bg-white border-0 pt-0 pb-5 px-5">
                     {% if is_admin %}
@@ -104,7 +101,7 @@
                             {% endif %}
                         {% else %}
                             <button class="btn btn-theme-muted btn-lg w-100" style="font-size:1.15rem;" disabled>
-                                No Exam Available
+                                
                             </button>
                         {% endif %}
                     {% endif %}
@@ -231,7 +228,6 @@ document.addEventListener("DOMContentLoaded", function() {
 {% endblock %}
 
 <style>
-/* --- Modern modal style (round, shadow, spacing, align to grading card) --- */
 .custom-modal-modern .modal-content {
     border-radius: 20px;
     border: none;
@@ -298,13 +294,13 @@ body {
 .grading-period-card {
     border-radius: 14px;
     background: #fff;
-    box-shadow: 5px rgba(0,0,0,0.20s);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08),0 1.5px 5px rgba(86, 113, 156,.02);
     overflow: hidden;
     position: relative;
     transition: box-shadow 0.18s;
 }
 .grading-period-card:hover {
-    box-shadow: 0 6px 6px rgba(0,0,0,0.10);
+    box-shadow: 0 6px 30px rgba(0,0,0,0.10);
 }
 .period-status i {
     font-size: 1.15em;
