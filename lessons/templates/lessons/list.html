@@ -11,7 +11,7 @@
         </div>
         {% if user.is_staff %}
         <div class="col-auto d-flex align-items-center">
-            <a href="{% url 'lessons:upload_lesson' %}?grading_period={{ grading_period }}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+            <a href="{% url 'lessons:upload_lesson' %}?grading_period={{ grading_period }}" class="btn btn-primary btn-lg d-flex align-items-center">
                 <i class="bi bi-plus-lg me-2" style="font-size:1.5rem;"></i>
                 <span style="font-size:1.17rem;">Add Lesson</span>
             </a>
@@ -31,12 +31,25 @@
                         {{ lesson.description|truncatewords:20 }}
                     </p>
                 </div>
-                <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-between">
-                    <a href="{% url 'lessons:view_lesson' lesson.slug %}"
-                       class="btn btn-theme-primary btn-lg flex-fill"
-                       style="font-size:1.17rem;">
-                        <i class="bi bi-box-arrow-in-right me-1"></i> View Lesson
-                    </a>
+                <div class="card-footer bg-white border-0 pt-0 pb-4 px-4">
+                    <div class="d-flex flex-column gap-2">
+                        <a href="{% url 'lessons:view_lesson' lesson.slug %}"
+                            class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center"
+                            style="font-size:1.05rem;">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> View Lesson
+                        </a>
+                        {% if user.is_staff %}
+                            <a href="{% url 'lessons:lesson_edit' lesson.slug %}" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                <i class="bi bi-pencil-square me-1"></i> Edit
+                            </a>
+                            <form method="post" action="{% url 'lessons:lesson_archive' lesson.slug %}" class="archive-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center js-archive-btn" style="font-size:1.05rem;">
+                                    <i class="bi bi-archive me-1"></i> Archive
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             </div>
@@ -60,30 +73,30 @@
             {% if lesson.is_archived %}
             <div class="col-12 col-md-6 col-lg-4 mb-4">
                 <div class="lesson-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0 bg-light">
-                    {% if lesson.thumbnail %}
-                        <img src="{{ lesson.thumbnail.url }}"
-                             class="lesson-thumbnail card-img-top"
-                             alt="{{ lesson.title }}"
-                             style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover; opacity:0.7;"/>
-                    {% else %}
-                        <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
-                             style="height:16rem; border-radius:14px 14px 0 0;">
-                            <i class="bi bi-file-earmark-text theme-muted" style="font-size:3.5rem; opacity:0.7;"></i>
-                        </div>
-                    {% endif %}
                     <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
                         <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem; opacity:0.7;">{{ lesson.title }}</h4>
                         <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem; opacity:0.7;">
                             {{ lesson.description|truncatewords:20 }}
                         </p>
                     </div>
-                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-center">
-                        <form method="post" action="{% url 'lessons:lesson_unarchive' lesson.slug %}" class="w-100">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-success btn-lg flex-fill" style="font-size:1.17rem;">
-                                <i class="bi bi-arrow-up-circle me-1"></i> Unarchive Lesson
-                            </button>
-                        </form>
+                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4">
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{% url 'lessons:lesson_edit' lesson.slug %}" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                <i class="bi bi-pencil-square me-1"></i> Edit
+                            </a>
+                            <form method="post" action="{% url 'lessons:lesson_unarchive' lesson.slug %}" class="unarchive-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center js-unarchive-btn" style="font-size:1.05rem;">
+                                    <i class="bi bi-arrow-up-circle me-1"></i> Unarchive
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'lessons:lesson_delete' lesson.slug %}" class="delete-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center js-delete-btn" style="font-size:1.05rem;" onclick="return confirm('Are you sure you want to permanently remove this lesson?');">
+                                    <i class="bi bi-trash me-1"></i> Remove
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -149,24 +162,69 @@ body {
     color: #888 !important;
 }
 
-.btn-theme-primary {
-    background: #762730;
-    color: #ffffff !important;
-    border: none;
-    box-shadow: none;
+.btn-primary, .btn-warning, .btn-outline-primary, .btn-success, .btn-danger {
     border-radius: 10px;
     font-weight: 600;
     letter-spacing: .01em;
-    transition: background 0.1s;
+    transition: background 0.1s, color 0.1s;
     padding: 0.85rem 1.3rem;
-    border:rgb(255, 255, 255) 2px solid;
 }
 
+.btn-primary {
+    background: #762730;
+    color: #fff !important;
+    border: none;
+}
 
-.btn-theme-primary:hover {
-    background: #ffffff !important ;
+.btn-primary:hover {
+    background: #fff !important ;
     color: #762730 !important; 
     border: #762730 2px solid;
+}
+
+.btn-warning {
+    background: var(--warning-color);
+    color: #fff !important;
+    border: none;
+}
+
+.btn-warning:hover {
+    background: #fff3cd;
+    color: var(--warning-color) !important;
+    border: 2px solid var(--warning-color);
+}
+
+.btn-outline-primary {
+    background: #fff;
+    color: #762730 !important;
+    border: 2px solid #762730 !important;
+}
+
+.btn-outline-primary:hover {
+    background: #762730 !important;
+    color: #fff !important;
+}
+
+.btn-success {
+    background: #4caf50;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #3f9142;
+    color: #fff !important;
+}
+
+.btn-danger {
+    background: #c0392b;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #e57373;
+    color: #fff !important;
 }
 
 
@@ -185,8 +243,7 @@ body {
     .card-title {
         font-size: 1.13rem !important;
     }
-    .btn-theme-primary,
-    .page-link.btn-lg {
+    .btn-primary, .btn-warning, .btn-outline-primary, .btn-success, .btn-danger, .page-link.btn-lg {
         font-size: 1.02rem;
         padding: 0.62em 0.7em;
     }
@@ -195,5 +252,23 @@ body {
     }
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function ajaxArchive(form, onDone) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetch(form.action, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(response => response.ok ? location.reload() : alert('Archive failed.'))
+        });
+    }
+    document.querySelectorAll('.archive-form').forEach(form => ajaxArchive(form));
+    document.querySelectorAll('.unarchive-form').forEach(form => ajaxArchive(form));
+});
+</script>
 
 {% endblock %}

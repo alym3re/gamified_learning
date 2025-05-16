@@ -7,7 +7,7 @@ class QuizForm(forms.ModelForm):
         model = Quiz
         fields = [
             'title', 'description', 'grading_period', 'time_limit', 'passing_score',
-            'shuffle_questions', 'show_correct_answers', 'is_archived', 'thumbnail'
+            'shuffle_questions', 'show_correct_answers'
         ]
         widgets = {
             'title': forms.TextInput(attrs={'class': 'form-control'}),
@@ -17,19 +17,17 @@ class QuizForm(forms.ModelForm):
             'passing_score': forms.NumberInput(attrs={'min': 0, 'max': 100, 'class': 'form-control'}),
             'shuffle_questions': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'show_correct_answers': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-            'is_archived': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
 
 class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
-        fields = ['text', 'question_type', 'explanation', 'points', 'order']
+        fields = ['text', 'question_type', 'explanation', 'points']
         widgets = {
             'text': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'question_type': forms.Select(attrs={'class': 'form-select'}),
             'explanation': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'points': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
-            'order': forms.NumberInput(attrs={'min': 0, 'class': 'form-control'}),
         }
 
 class AnswerForm(forms.ModelForm):
@@ -65,6 +63,40 @@ class ShortAnswerForm(AnswerForm):
         self.fields['is_correct'].widget = forms.HiddenInput()
         self.fields['is_correct'].initial = True
 
+class FillInTheBlanksForm(forms.ModelForm):
+    """Form for fill-in-the-blanks questions: support dynamic blank answers as blank_answers[] on POST"""
+
+    class Meta:
+        model = Question
+        fields = ['text', 'question_type', 'explanation', 'points']
+        widgets = {
+            'text': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'question_type': forms.Select(attrs={'class': 'form-select'}),
+            'explanation': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'points': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
+        }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.blank_answers = []
+        if self.is_bound:
+            self.blank_answers = self.data.getlist('blank_answers[]') if hasattr(self.data, 'getlist') else []
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.blank_answers:
+            cleaned_blanks = [b.strip() for b in self.blank_answers if b.strip()]
+            text = cleaned_data.get('text', '')
+            blanks_count = text.count('[blank]')
+            if blanks_count != len(cleaned_blanks):
+                raise forms.ValidationError(f"Number of blank answers ({len(cleaned_blanks)}) must match number of [blank] in question ({blanks_count}).")
+            if any(not ans for ans in cleaned_blanks):
+                raise forms.ValidationError("All blank answers are required for fill-in-the-blanks questions.")
+            cleaned_data['blank_answers'] = cleaned_blanks
+        else:
+            raise forms.ValidationError("You must provide blank answers for fill-in-the-blanks questions.")
+        return cleaned_data
+
 # Base formset for answers
 AnswerFormSet = forms.inlineformset_factory(
     Question, Answer, form=AnswerForm, extra=2, can_delete=True, min_num=2
@@ -87,6 +119,10 @@ ShortAnswerFormSet = forms.inlineformset_factory(
     Question, Answer, form=ShortAnswerForm, extra=1, can_delete=True, min_num=1, max_num=1
 )
 
+FillInTheBlanksFormSet = forms.inlineformset_factory(
+    Question, Answer, form=AnswerForm, extra=0, can_delete=True, min_num=0
+)
+
 # Factory function to get the appropriate formset based on question type
 def get_answer_formset_for_question_type(question_type):
     formset_map = {
@@ -94,5 +130,6 @@ def get_answer_formset_for_question_type(question_type):
         'multiple_answer': MultipleAnswerFormSet,
         'true_false': TrueFalseFormSet,
         'short_answer': ShortAnswerFormSet,
+        'fill_in_the_blanks': FillInTheBlanksFormSet,
     }
     return formset_map.get(question_type, AnswerFormSet)

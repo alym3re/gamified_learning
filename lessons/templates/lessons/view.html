@@ -26,88 +26,76 @@
             <!-- Lesson Details Card -->
             <div class="lesson-card card grading-period-card border-0 shadow-sm mb-5">
                 <div class="card-header bg-white pb-3 pt-4 px-4 border-0">
-                    <div class="d-flex justify-content-between align-items-start flex-wrap">
-                        <h2 class="mb-0 fw-bold" style="font-size:2.1rem; line-height:1.1;">{{ lesson.title }}</h2>
-                        <div class="d-flex gap-2 flex-wrap">
-                            {% if user.is_staff %}
-
-                                {% if lesson.is_archived %}
-                                    <form method="post" action="{% url 'lessons:lesson_unarchive' lesson.slug %}" class="d-inline ms-2">
-                                        {% csrf_token %}
-                                        <button class="btn btn-warning btn-lg d-flex align-items-center" type="submit">
-                                            <i class="bi bi-arrow-up-circle me-2"></i> Unarchive
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <form method="post" action="{% url 'lessons:lesson_archive' lesson.slug %}" class="d-inline ms-2">
-                                        {% csrf_token %}
-                                        <button class="btn btn-secondary btn-lg d-flex align-items-center" type="submit">
-                                            <i class="bi bi-archive me-2"></i> Archive
-                                        </button>
-                                    </form>
-                                {% endif %}
-
-                                <a href="{% url 'lessons:lesson_edit' lesson.slug %}" class="btn btn-theme-muted btn-lg d-flex align-items-center ms-3 mt-2 mt-lg-0">
-                                    <i class="bi bi-pencil-square me-2"></i> Edit
-                                </a>
-                                <!-- Archive/Unarchive button -->
-                                
-                            {% endif %}
-                        </div>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-person-circle me-1"></i> 
+                            Uploaded by <strong class="mx-1">{{ lesson.uploaded_by.get_full_name|default:lesson.uploaded_by.username }}</strong>
+                        </span>
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-calendar-week me-1"></i>
+                            {{ grading_period_display }}
+                        </span>
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-eye me-1"></i> {{ lesson.view_count }} views
+                        </span>
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-clock-history me-1"></i> 
+                            <span id="uploaded-date" data-datetime="{{ lesson.upload_date|date:"c" }}">{{ lesson.upload_date|date:"M d, Y H:i" }}</span>
+                        </span>
                     </div>
+                    <h2 class="fw-bold" style="font-size:2.1rem; line-height:1.1;">{{ lesson.title }}</h2>
+
                 </div>
                 <div class="card-body p-4">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                        <small class="theme-muted me-2 mb-2" style="font-size:1.13rem;">
-                            Uploaded on <span id="uploaded-date"
-                            data-datetime="{{ lesson.upload_date|date:"c" }}">{{ lesson.upload_date|date:"M d, Y H:i" }}</span> by
-                            <strong>{{ lesson.uploaded_by.get_full_name|default:lesson.uploaded_by.username }}</strong>
-                        </small>
-                        {% if lesson.view_count %}
-                        <span class="theme-muted d-flex align-items-center mb-2" style="font-size:1.07rem;">
-                            <i class="bi bi-eye me-1"></i>{{ lesson.view_count }} views
-                        </span>
-                        {% endif %}
-                    </div>
-                    {% if lesson.thumbnail %}
-                    <img src="{{ lesson.thumbnail.url }}" class="img-fluid rounded mb-4 w-100 theme-shadow" alt="{{ lesson.title }}"
-                         style="max-height:22rem;object-fit:cover;"/>
-                    {% endif %}
 
                     <div class="lesson-content mb-4" style="font-size:1.17rem;">
                         {{ lesson.description|linebreaksbr }}
                     </div>
 
-                    <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-                        <span class="badge" style="background:var(--primary-color);color:#fff;font-size:1.02rem;padding:0.65em 1.1em;">
-                            <i class="bi bi-calendar-week me-1"></i> {{ grading_period_display }}
-                        </span>
-                        <span class="badge bg-light theme-muted border" style="font-size:1.01rem;">
-                            <i class="bi bi-eye me-1"></i> {{ lesson.view_count }} Views
-                        </span>
+                    <!-- Uniform Actions Row -->
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if user.is_staff %}
+                            {% if lesson.is_archived %}
+                                <form method="post" action="{% url 'lessons:lesson_unarchive' lesson.slug %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-warning d-flex align-items-center" type="submit">
+                                        <i class="bi bi-arrow-up-circle me-2"></i> Unarchive
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{% url 'lessons:lesson_archive' lesson.slug %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-secondary d-flex align-items-center" type="submit">
+                                        <i class="bi bi-archive me-2"></i> Archive
+                                    </button>
+                                </form>
+                            {% endif %}
 
+                            
 
-                        {% if not user.is_staff %}
-                        <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-                            {# Only display the button for non-admin users #}
-                            {% if not user.is_staff %}
-                            <form method="post" action="{% url 'lessons:mark_completed' lesson.slug %}" class="d-inline ms-auto">
+                            <a href="{% url 'lessons:lesson_edit' lesson.slug %}" class="btn btn-outline-primary d-flex align-items-center">
+                                <i class="bi bi-pencil-square me-2"></i> Edit
+                            </a>
+
+                            <form method="post" action="{% url 'lessons:lesson_delete' lesson.slug %}" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently remove this lesson?');">
                                 {% csrf_token %}
-                                <button type="submit"
-                                  class="btn btn-lg ms-2 {% if progress.completed %}btn-theme-success{% else %}btn-theme-primary{% endif %} d-flex align-items-center">
-                                    <i class="bi {% if progress.completed %}bi-check2-circle{% else %}bi-circle{% endif %} me-1"></i>
-                                    <span style="font-size:1.09rem;">
-                                      {% if progress.completed %}Completed{% else %}Mark Complete{% endif %}
-                                    </span>
+                                <button class="btn btn-danger d-flex align-items-center" type="submit">
+                                    <i class="bi bi-trash me-2"></i> Remove
                                 </button>
                             </form>
-                            {% endif %}
-                        </div>
                         {% endif %}
-
-                    
-
-
+                        {% if not user.is_staff %}
+                        <form method="post" action="{% url 'lessons:mark_completed' lesson.slug %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit"
+                              class="btn {% if progress.completed %}btn-success{% else %}btn-primary{% endif %} d-flex align-items-center">
+                                <i class="bi {% if progress.completed %}bi-check2-circle{% else %}bi-circle{% endif %} me-1"></i>
+                                <span style="font-size:1.09rem;">
+                                  {% if progress.completed %}Completed{% else %}Mark Complete{% endif %}
+                                </span>
+                            </button>
+                        </form>
+                        {% endif %}
                     </div>
                 </div>
             </div>

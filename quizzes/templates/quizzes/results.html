@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load dict_extras %}
 {% block title %}Quiz Results - {{ attempt.quiz.title }}{% endblock %}
 
 {% block content %}
@@ -58,7 +59,42 @@
                                     </div>
                                     <div class="card-body">
                                         <p class="mb-1"><strong>Your Answer:</strong>
-                                            {% if ua.selected_answers.all|length %}
+                                            {% if question.question_type == "fill_in_the_blanks" %}
+                                                {% with correct=question.answers.all %}
+                                                    <ol style="padding-left:1.3em;">
+                                                        {% for idx in correct|length|make_list %}
+                                                            <li>
+                                                                {% with user_blanks=ua.text_answer|default_if_none:""|split:"|" %}
+                                                                    <span 
+                                                                        {% if user_blanks|length >= forloop.counter %}
+                                                                            {% if user_blanks|slice:":forloop.counter"|last|lower == correct|get_at_index:forloop.counter0.text|lower %}
+                                                                                class="text-success fw-bold"
+                                                                            {% else %}
+                                                                                class="text-danger fw-bold"
+                                                                            {% endif %}
+                                                                        {% endif %}>
+                                                                        {% if user_blanks|length >= forloop.counter %}
+                                                                            {{ user_blanks|slice:":forloop.counter"|last|default:"[blank]" }}
+                                                                        {% else %}
+                                                                            [blank]
+                                                                        {% endif %}
+                                                                    </span>
+                                                                    <span class="ms-2 text-muted">
+                                                                        {% if show_answers %}
+                                                                            (Correct: <span class="text-success">{% with correct_answer=correct|get_at_index:forloop.counter0 %}{{ correct_answer.text }}{% endwith %}</span>)
+                                                                        {% endif %}
+                                                                    </span>
+                                                                {% endwith %}
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ol>
+                                                    <span>
+                                                        {% if ua.partial_score %}
+                                                        Correct blanks: <span class="fw-bold">{{ ua.partial_score }} / {{ correct|length }}</span>
+                                                        {% endif %}
+                                                    </span>
+                                                {% endwith %}
+                                            {% elif ua.selected_answers.all|length %}
                                                 {% for choice in ua.selected_answers.all %}
                                                     <span class="badge bg-secondary">{{ choice.text }}</span>
                                                 {% endfor %}

@@ -110,7 +110,7 @@
                 <div class="card-header bg-white d-flex justify-content-between align-items-center px-4 pt-4 pb-3 border-0">
                     <h4 class="fw-semibold mb-0" style="font-size:1.25rem">
                         <i class="bi bi-kanban me-2"></i>
-                        Exam Questions <span class="badge bg-info ms-2">{{ questions.count }}</span>
+                        Exam Questions <span class="badge bg-info ms-2">{{ questions|length }}</span>
                     </h4>
                     <a href="{% url 'exams:grading_period_exam_list' %}" class="btn btn-theme-success">
                         <i class="bi bi-check-circle me-1"></i> Finish

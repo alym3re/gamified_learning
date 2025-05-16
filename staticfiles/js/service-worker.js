@@ -9,7 +9,6 @@ const ASSETS = [
   '/static/images/logo.png',
   '/static/images/icons/icon-192x192.png',
   '/static/images/icons/icon-512x512.png',
-  '/templates/base.html',
   OFFLINE_URL
 ];
 

@@ -19,6 +19,8 @@ urlpatterns = [
     path('period/<str:grading_period>/', views.quiz_list_by_period, name='quiz_list_by_period'),
     path('<int:quiz_id>/lock/', views.lock_quiz, name='lock_quiz'),
     path('<int:quiz_id>/unlock/', views.unlock_quiz, name='unlock_quiz'),
+    path('<slug:slug>/delete/', views.delete_quiz, name='quiz_delete'),
+    
 ]
 
 

@@ -310,3 +310,16 @@ def toggle_period_lock(request, grading_period):
     lock_obj.locked = not lock_obj.locked
     lock_obj.save()
     return redirect('lessons:grading_period_list')
+
+@user_passes_test(lambda u: u.is_staff)
+@require_POST
+def delete_lesson(request, slug):
+    lesson = get_object_or_404(Lesson, slug=slug, is_active=True)
+    if not lesson.is_archived:
+        messages.error(request, "You can only delete archived lessons.")
+        return redirect('lessons:view_lesson', slug=lesson.slug)
+    # Soft delete (set is_active to False):
+    lesson.is_active = False
+    lesson.save(update_fields=['is_active'])
+    messages.success(request, f'Lesson \"{lesson.title}\" has been deleted.')
+    return redirect('lessons:lesson_list_by_period', grading_period=lesson.grading_period)

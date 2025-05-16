@@ -17,4 +17,6 @@ urlpatterns = [
     path('<slug:slug>/read/', views.read_file, name='read_file'),
     path('admin/lesson-access/', views.admin_lesson_access_report, name='lesson_access_report'),
     path('admin/period-lock-toggle/<str:grading_period>/', views.toggle_period_lock, name='toggle_period_lock'),
+    path('<slug:slug>/delete/', views.delete_lesson, name='lesson_delete'),
+
 ]

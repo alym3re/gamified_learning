@@ -1,5 +1,6 @@
 
 {% extends 'base.html' %}
+{% load percentage_extras %}
 {% block title %}{{ quiz.title }}{% endblock %}
 
 {% block content %}
@@ -25,63 +26,70 @@
             <!-- Quiz Details Card -->
             <div class="quiz-card card grading-period-card border-0 shadow-sm mb-5">
                 <div class="card-header bg-white pb-3 pt-4 px-4 border-0">
-                    <div class="d-flex justify-content-between align-items-start flex-wrap">
-                        <h2 class="mb-0 fw-bold" style="font-size:2.1rem; line-height:1.1;">{{ quiz.title }}</h2>
-                        <div class="d-flex gap-2 flex-wrap">
-                            {% if request.user.is_staff %}
-                                {% if quiz.is_archived %}
-                                    <form method="post" action="{% url 'quizzes:unarchive_quiz' quiz.id %}" class="d-inline ms-2">
-                                        {% csrf_token %}
-                                        <button class="btn btn-warning btn-lg d-flex align-items-center" type="submit">
-                                            <i class="bi bi-arrow-up-circle me-2"></i> Unarchive
-                                        </button>
-                                    </form>
-                                {% else %}
-                                    <form method="post" action="{% url 'quizzes:archive_quiz' quiz.id %}" class="d-inline ms-2">
-                                        {% csrf_token %}
-                                        <button class="btn btn-secondary btn-lg d-flex align-items-center" type="submit">
-                                            <i class="bi bi-archive me-2"></i> Archive
-                                        </button>
-                                    </form>
-                                {% endif %}
-                                <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-theme-muted btn-lg d-flex align-items-center ms-3 mt-2 mt-lg-0">
-                                    <i class="bi bi-pencil-square me-2"></i> Edit Questions
-                                </a>
-                                <a href="{% url 'quizzes:edit_quiz' quiz.id %}" class="btn btn-theme-muted btn-lg d-flex align-items-center ms-3 mt-2 mt-lg-0">
-                                    <i class="bi bi-pencil me-2"></i> Edit Quiz
-                                </a>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body p-4">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
-                        <small class="theme-muted me-2 mb-2" style="font-size:1.13rem;">
-                            Uploaded on <span id="uploaded-date"
-                            data-datetime="{{ quiz.created_at|date:"c" }}">{{ quiz.created_at|date:"M d, Y H:i" }}</span>
-                            by
-                            <strong>{{ quiz.created_by.get_full_name|default:quiz.created_by.username }}</strong>
-                        </small>
-                        <span class="theme-muted d-flex align-items-center mb-2" style="font-size:1.07rem;">
-                            <i class="bi bi-eye me-1"></i>{{ quiz.view_count }} views
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-person-circle me-1"></i>
+                            Uploaded by <strong class="mx-1">{{ quiz.created_by.get_full_name|default:quiz.created_by.username }}</strong>
+                        </span>
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-calendar-week me-1"></i>
+                            {{ quiz.get_grading_period_display }}
+                        </span>
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-eye me-1"></i> {{ quiz.view_count }} views
+                        </span>
+                        <span class="badge bg-light theme-muted border d-flex align-items-center" style="font-size:1.01rem;">
+                            <i class="bi bi-clock-history me-1"></i>
+                            <span id="uploaded-date" data-datetime="{{ quiz.created_at|date:"c" }}">{{ quiz.created_at|date:"M d, Y H:i" }}</span>
                         </span>
                     </div>
-                    {% if quiz.thumbnail %}
-                    <img src="{{ quiz.thumbnail.url }}" class="img-fluid rounded mb-4 w-100 theme-shadow" alt="{{ quiz.title }}"
-                         style="max-height:22rem;object-fit:cover;"/>
-                    {% endif %}
+                    <h2 class="fw-bold" style="font-size:2.1rem; line-height:1.1;">{{ quiz.title }}</h2>
+                </div>
+                <div class="card-body p-4">
 
                     <div class="quiz-content mb-4" style="font-size:1.17rem;">
                         {{ quiz.description|linebreaksbr }}
                     </div>
 
+                    <!-- Uniform Actions Row -->
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        {% if request.user.is_staff %}
+                            {% if quiz.is_archived %}
+                                <form method="post" action="{% url 'quizzes:unarchive_quiz' quiz.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-warning d-flex align-items-center" type="submit">
+                                        <i class="bi bi-arrow-up-circle me-2"></i> Unarchive
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{% url 'quizzes:archive_quiz' quiz.id %}" class="d-inline">
+                                    {% csrf_token %}
+                                    <button class="btn btn-secondary d-flex align-items-center" type="submit">
+                                        <i class="bi bi-archive me-2"></i> Archive
+                                    </button>
+                                </form>
+                            {% endif %}
+                            <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-outline-primary d-flex align-items-center">
+                                <i class="bi bi-pencil-square me-2"></i> Edit Questions
+                            </a>
+                            <a href="{% url 'quizzes:edit_quiz' quiz.id %}" class="btn btn-outline-primary d-flex align-items-center">
+                                <i class="bi bi-pencil me-2"></i> Edit Quiz
+                            </a>
+                        {% endif %}
+                        {% if not request.user.is_staff %}
+                            {% if completed %}
+                                <span class="btn btn-success d-flex align-items-center" style="font-size:1.17rem;" disabled>
+                                    <i class="bi bi-check-circle me-1"></i> Completed
+                                </span>
+                            {% else %}
+                                <a href="{% url 'quizzes:take_quiz' quiz.id %}" class="btn btn-primary d-flex align-items-center">
+                                    <i class="bi bi-play-circle me-1"></i> Take Quiz
+                                </a>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
                     <div class="d-flex align-items-center flex-wrap gap-3 mb-3">
-                        <span class="badge" style="background:var(--primary-color);color:#fff;font-size:1.02rem;padding:0.65em 1.1em;">
-                            <i class="bi bi-calendar-week me-1"></i> {{ quiz.get_grading_period_display }}
-                        </span>
-                        <span class="badge bg-light theme-muted border" style="font-size:1.01rem;">
-                            <i class="bi bi-eye me-1"></i> {{ quiz.view_count }} Views
-                        </span>
                         <span class="badge bg-light theme-muted border" style="font-size:1.01rem;">
                             <i class="bi bi-question-circle me-1"></i> {{ questions|length }} Questions
                         </span>
@@ -89,21 +97,11 @@
                             <i class="bi bi-percent me-1"></i> Passing: {{ quiz.passing_score }}%
                         </span>
                         {% if quiz.time_limit %}
-                        <span class="badge bg-light theme-muted border" style="font-size:1.01rem;">
-                            <i class="bi bi-clock me-1"></i> Time Limit: {{ quiz.time_limit }} min.
-                        </span>
+                            <span class="badge bg-light theme-muted border" style="font-size:1.01rem;">
+                                <i class="bi bi-clock me-1"></i> Time Limit: {{ quiz.time_limit }} min.
+                            </span>
                         {% endif %}
                     </div>
-                  
-                    {% if not quiz.is_archived and not request.user.is_staff %}
-                        {% if completed %}
-                            <span class="btn btn-success mb-2 disabled" style="font-size:1.17rem;">
-                              <i class="bi bi-check-circle me-1"></i> Completed
-                            </span>
-                        {% else %}
-                            <a href="{% url 'quizzes:take_quiz' quiz.id %}" class="btn btn-primary mb-2">Take Quiz</a>
-                        {% endif %}
-                    {% endif %}
                 </div>
             </div>
             
@@ -153,9 +151,9 @@
                                     <th scope="col">Rank</th>
                                     <th scope="col">User</th>
                                     <th scope="col">Score</th>
+                                    <th scope="col">Percentage</th>
                                     <th scope="col">Passed</th>
                                     <th scope="col">Date Taken</th>
-                                    <th scope="col">Time Spent</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -166,7 +164,10 @@
                                         {{ attempt.user.get_full_name|default:attempt.user.username }}
                                     </td>
                                     <td>
-                                        {{ attempt.score|floatformat:1 }}%
+                                        {{ attempt.raw_points|floatformat:0 }} / {{ attempt.total_points|floatformat:0 }}
+                                    </td>
+                                    <td>
+                                        {{ attempt.score|smart_percent }}%
                                     </td>
                                     <td>
                                         {% if attempt.passed %}
@@ -179,9 +180,6 @@
                                         <span class="local-time" data-datetime="{{ attempt.start_time|date:"c" }}">
                                             {{ attempt.start_time|date:"M d, Y H:i" }}
                                         </span>
-                                    </td>
-                                    <td>
-                                        {{ attempt.duration_str }}
                                     </td>
                                 </tr>
                                 {% endfor %}

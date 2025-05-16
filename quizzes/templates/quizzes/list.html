@@ -1,4 +1,3 @@
-
 {% extends 'base.html' %}
 {% block title %}{{ grading_period_display }} Quizzes{% endblock %}
 
@@ -10,12 +9,12 @@
         </div>
         <div class="col-auto d-flex align-items-center">
             {% if user.is_staff %}
-                <a href="{% url 'quizzes:upload_quiz' %}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+                <a href="{% url 'quizzes:create_quiz' %}?grading_period={{ grading_period }}" class="btn btn-primary btn-lg d-flex align-items-center">
                     <i class="bi bi-plus-lg me-2" style="font-size:1.5rem;"></i>
                     <span style="font-size:1.17rem;">Add Quiz</span>
                 </a>
             {% else %}
-                <a href="{% url 'quizzes:quiz_history' %}?grading_period={{ grading_period }}" class="btn btn-theme-primary btn-lg d-flex align-items-center">
+                <a href="{% url 'quizzes:quiz_history' %}?grading_period={{ grading_period }}" class="btn btn-primary btn-lg d-flex align-items-center">
                     <i class="bi bi-clock-history me-2" style="font-size:1.5rem;"></i>
                     <span style="font-size:1.17rem;">View History</span>
                 </a>
@@ -27,84 +26,59 @@
         {% for quiz in page_obj %}
             {% if not quiz.is_archived %}
             <div class="col-12 col-md-6 col-lg-4 mb-4">
-                <div class="quiz-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0">
+                <div class="quiz-card card grading-period-card position-relative d-flex flex-column h-100 p-0">
                     {% if quiz.locked and not user.is_staff %}
                     <div class="locked-overlay d-flex flex-column align-items-center justify-content-center">
-                        <i class="bi bi-lock-fill mb-3 theme-danger" style="font-size:2.8rem;"></i>
-                        <span class="locked-text">Locked</span>
+                        <i class="bi bi-lock-fill mb-3 text-light" style="font-size:2.8rem;"></i>
+                        <span class="locked-text text-light">Locked</span>
                     </div>
                     {% endif %}
-                    {% if quiz.thumbnail %}
-                        <img src="{{ quiz.thumbnail.url }}"
-                             class="quiz-thumbnail card-img-top"
-                             alt="{{ quiz.title }}"
-                             style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover;"/>
-                    {% else %}
-                        <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
-                             style="height:16rem; border-radius:14px 14px 0 0;">
-                            <i class="bi bi-question-circle theme-muted" style="font-size:3.5rem;"></i>
-                        </div>
-                    {% endif %}
                     <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
-                        <div class="period-status position-absolute top-0 end-0 m-3">
-                            {% if quiz.locked %}
-                                <i class="bi bi-lock-fill theme-danger" title="Locked" style="font-size:1.6rem;"></i>
-                            {% else %}
-                                <i class="bi bi-unlock-fill theme-success" title="Unlocked" style="font-size:1.6rem;"></i>
-                            {% endif %}
-                        </div>
+
                         <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem;">{{ quiz.title }}</h4>
                         <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem;">
                             {{ quiz.description|truncatewords:20 }}
                         </p>
-                        <div class="d-flex justify-content-between w-100 mb-3" style="font-size:1.14rem;">
-                            <span>
-                                <i class="bi bi-list-ol me-1"></i>{{ quiz.question_count }}
-                                <span class="theme-muted">Questions</span>
-                            </span>
-                            <span>
-                                <i class="bi bi-eye me-1"></i>{{ quiz.view_count }}
-                                <span class="theme-muted">Views</span>
-                            </span>
-                        </div>
+
                     </div>
-                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-between">
+                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4">
                         {% if user.is_staff %}
-                            <div class="btn-icon-group w-100 d-flex justify-content-center gap-2">
-                                <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-action-icon btn-view" title="View Quiz" data-bs-toggle="tooltip">
-                                    <i class="bi bi-eye"></i>
+                            <div class="d-flex flex-column gap-2">
+                                <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                    <i class="bi bi-eye me-1"></i> View Quiz
                                 </a>
-                                <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-action-icon btn-edit" title="Edit Questions" data-bs-toggle="tooltip">
-                                    <i class="bi bi-pencil-square"></i>
+                                <a href="{% url 'quizzes:add_quiz_questions' quiz.id %}" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                    <i class="bi bi-pencil-square me-1"></i> Edit Questions
                                 </a>
+                                <form method="post"
+                                      action="{% url 'quizzes:archive_quiz' quiz.id %}?next={% url 'quizzes:quiz_list_by_period' quiz.grading_period %}"
+                                      class="d-inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                        <i class="bi bi-archive me-1"></i> Archive Quiz
+                                    </button>
+                                </form>
                                 <form method="post"
                                       action="{% if quiz.locked %}{% url 'quizzes:unlock_quiz' quiz.id %}{% else %}{% url 'quizzes:lock_quiz' quiz.id %}{% endif %}"
                                       class="d-inline">
                                     {% csrf_token %}
                                     <button type="submit"
-                                      class="btn btn-action-icon {% if quiz.locked %}btn-unlock{% else %}btn-lock{% endif %}"
-                                      title="{% if quiz.locked %}Unlock Quiz{% else %}Lock Quiz{% endif %}" data-bs-toggle="tooltip">
-                                        <i class="bi {% if quiz.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %}"></i>
-                                    </button>
-                                </form>
-                                <form method="post"
-                                      action="{% url 'quizzes:archive_quiz' quiz.id %}?next={% url 'quizzes:quiz_list_by_period' quiz.grading_period %}"
-                                      class="d-inline">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn btn-action-icon btn-archive" title="Archive Quiz" data-bs-toggle="tooltip">
-                                        <i class="bi bi-archive"></i>
+                                      class="btn {% if quiz.locked %}btn-primary{% else %}btn-outline-primary{% endif %} btn-lg w-100 d-flex align-items-center justify-content-center"
+                                      style="font-size:1.05rem;">
+                                        <i class="bi {% if quiz.locked %}bi-unlock-fill{% else %}bi-lock-fill{% endif %} me-1"></i>
+                                        {% if quiz.locked %}Unlock Quiz{% else %}Lock Quiz{% endif %}
                                     </button>
                                 </form>
                             </div>
                         {% else %}
                             {% if completed_quiz_ids and quiz.id in completed_quiz_ids %}
-                                <span class="btn btn-success btn-lg flex-fill disabled" style="font-size:1.17rem;">
+                                <button class="btn btn-success btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;" disabled>
                                     <i class="bi bi-check-circle me-1"></i> Completed
-                                </span>
+                                </button>
                             {% else %}
                                 <a href="{% url 'quizzes:take_quiz' quiz.id %}"
-                                   class="btn btn-take-quiz btn-lg flex-fill"
-                                   style="font-size:1.17rem;"
+                                   class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center"
+                                   style="font-size:1.05rem;"
                                    {% if quiz.locked %}disabled{% endif %}>
                                     <i class="bi bi-box-arrow-in-right me-1"></i> Take Quiz
                                 </a>
@@ -131,35 +105,31 @@
             {% for quiz in page_obj %}
             {% if quiz.is_archived %}
             <div class="col-12 col-md-6 col-lg-4 mb-4">
-                <div class="quiz-card card grading-period-card border-0 shadow-sm position-relative d-flex flex-column h-100 p-0 bg-light">
-                    {% if quiz.thumbnail %}
-                        <img src="{{ quiz.thumbnail.url }}"
-                             class="quiz-thumbnail card-img-top"
-                             alt="{{ quiz.title }}"
-                             style="border-radius:14px 14px 0 0; height:16rem; object-fit:cover; opacity:0.7;"/>
-                    {% else %}
-                        <div class="card-img-top no-thumbnail d-flex align-items-center justify-content-center bg-light"
-                             style="height:16rem; border-radius:14px 14px 0 0;">
-                            <i class="bi bi-question-circle theme-muted" style="font-size:3.5rem; opacity:0.7;"></i>
-                        </div>
-                    {% endif %}
+                <div class="quiz-card card grading-period-card position-relative d-flex flex-column h-100 p-0 bg-light">
+
                     <div class="card-body d-flex flex-column justify-content-between align-items-center p-4">
                         <h4 class="card-title fw-semibold mb-3 mt-2 text-center" style="font-size:1.65rem; min-height:3.2rem; opacity:0.7;">{{ quiz.title }}</h4>
                         <p class="card-text theme-muted text-center mb-3" style="font-size:1.15rem; opacity:0.7;">
                             {{ quiz.description|truncatewords:20 }}
                         </p>
                     </div>
-                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4 d-flex flex-row align-items-center justify-content-center">
-                        <div class="btn-icon-group w-100 d-flex justify-content-center gap-2">
-                            <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-action-icon btn-view" title="View Quiz" data-bs-toggle="tooltip">
-                                <i class="bi bi-eye"></i>
+                    <div class="card-footer bg-white border-0 pt-0 pb-4 px-4">
+                        <div class="d-flex flex-column gap-2">
+                            <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                <i class="bi bi-eye me-1"></i> View Quiz
                             </a>
                             <form method="post"
                                   action="{% url 'quizzes:unarchive_quiz' quiz.id %}?next={% url 'quizzes:quiz_list_by_period' quiz.grading_period %}"
                                   class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-action-icon btn-unarchive" title="Unarchive Quiz" data-bs-toggle="tooltip">
-                                    <i class="bi bi-arrow-up-circle"></i>
+                                <button type="submit" class="btn btn-outline-primary btn-lg w-100 d-flex align-items-center justify-content-center" style="font-size:1.05rem;">
+                                    <i class="bi bi-arrow-up-circle me-1"></i> Unarchive
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'quizzes:quiz_delete' quiz.slug %}" class="delete-form">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-danger btn-lg w-100 d-flex align-items-center justify-content-center js-delete-btn" style="font-size:1.05rem;" onclick="return confirm('Are you sure you want to permanently remove this quiz?');">
+                                    <i class="bi bi-trash me-1"></i> Remove
                                 </button>
                             </form>
                         </div>
@@ -202,7 +172,7 @@
 .locked-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(248,244,242,0.97);
+    background: rgb(118,39,48); /* match exam page overlay bg */
     z-index: 10;
     border-radius: 14px;
     display: flex;
@@ -217,6 +187,7 @@
 .locked-text {
     font-weight: 600;
     font-size: 2rem;
+    text-shadow: none;
     letter-spacing: 1px;
 }
 .theme-success {
@@ -226,99 +197,112 @@
     color: var(--danger-color) !important;
 }
 
-.btn-icon-group .btn-action-icon, .btn-icon-group form .btn-action-icon {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    margin-right: 0.23rem;
-    padding: 0;
-    border-radius: 8px !important;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.32rem;
-    background: #e9e9e9;
-    color: #333;
-    border: none;
-    box-shadow: none;
-    transition: background 0.18s, color 0.09s;
+.grading-period-card,
+.quiz-card {
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08),0 1.5px 5px rgba(86, 113, 156,.02);
+    overflow: hidden;
     position: relative;
+    transition: box-shadow 0.18s;
+}
+.grading-period-card:hover,
+.quiz-card:hover {
+    box-shadow: 0 6px 30px rgba(0,0,0,0.13);
+    transform: translateY(-3px) scale(1.02);
+}
+.theme-muted {
+    color: #888 !important;
 }
 
-.btn-action-icon:focus, .btn-action-icon:active {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--primary-color, #2779e2)50;
-}
-
-/* Hover effects for explicit actions */
-.btn-view:hover, .btn-view:focus {
-    background: var(--primary-color, #2779e2);
-    color: #fff;
-}
-.btn-edit:hover, .btn-edit:focus {
-    background: var(--secondary-color, #38b6ff);
-    color: #fff;
-}
-.btn-lock:hover, .btn-lock:focus { 
-    background: #ef4444;  /* Red for lock */
-    color: #fff;
-}
-.btn-unlock:hover, .btn-unlock:focus { 
-    background: #22c55e;  /* Green for unlock */
-    color: #fff;
-}
-.btn-archive:hover, .btn-archive:focus  {
-    background: #c28801; /* Gold for archive */
-    color: #fff;
-}
-.btn-unarchive:hover, .btn-unarchive:focus {
-    background: #15803d; /* Green for unarchive */
-    color: #fff;
-}
-.btn-action-icon[disabled] { opacity: 0.55; }
-
-.btn-take-quiz {
-    background: #762730; /* maroon */
-    color: #fff !important;
-    border: none;
-    box-shadow: none;
+.btn-primary, .btn-warning, .btn-outline-primary, .btn-success, .btn-danger {
     border-radius: 10px;
     font-weight: 600;
     letter-spacing: .01em;
-    transition: background 0.12s, color 0.12s;
-}
-.btn-take-quiz:hover, .btn-take-quiz:focus {
-    background: #5a0000; /* darker maroon on hover */
-    color: #fff !important;
-}
-
-@media (max-width: 991px) {
-    .btn-icon-group .btn-action-icon {
-        margin-bottom: 0.35rem;
-    }
-}
-
-.btn-theme-primary {
-    background: #762730;
-    color: #ffffff !important;
-    border: none;
-    box-shadow: none;
-    border-radius: 10px;
-    font-weight: 600;
-    letter-spacing: .01em;
-    transition: background 0.1s;
+    transition: background 0.1s, color 0.1s;
     padding: 0.85rem 1.3rem;
-    border:rgb(255, 255, 255) 2px solid;
 }
 
+.btn-primary {
+    background: #762730;
+    color: #fff !important;
+    border: none;
+}
 
-.btn-theme-primary:hover {
-    background: #ffffff !important ;
+.btn-primary:hover {
+    background: #fff !important ;
     color: #762730 !important; 
     border: #762730 2px solid;
 }
 
+.btn-warning {
+    background: var(--warning-color);
+    color: #fff !important;
+    border: none;
+}
+
+.btn-warning:hover {
+    background: #fff3cd;
+    color: var(--warning-color) !important;
+    border: 2px solid var(--warning-color);
+}
+
+.btn-outline-primary {
+    background: #fff;
+    color: #762730 !important;
+    border: 2px solid #762730 !important;
+}
+
+.btn-outline-primary:hover {
+    background: #762730 !important;
+    color: #fff !important;
+}
+
+.btn-success {
+    background: #4caf50;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-success:hover {
+    background: #3f9142;
+    color: #fff !important;
+}
+
+.btn-danger {
+    background: #c0392b;
+    color: #fff !important;
+    border: none;
+}
+
+.btn-danger:hover {
+    background: #e57373;
+    color: #fff !important;
+}
+
+.page-link.btn-lg {
+    font-size: 1.17rem;
+    min-width: 2.9rem;
+    padding: 0.7em 1.1em;
+}
+.card-title {
+    font-size: 1.65rem;
+}
+.card-text {
+    font-size: 1.15rem;
+}
+@media (max-width: 575px) {
+    .card-title {
+        font-size: 1.13rem !important;
+    }
+    .btn-primary, .btn-warning, .btn-outline-primary, .btn-success, .btn-danger, .page-link.btn-lg {
+        font-size: 1.02rem;
+        padding: 0.62em 0.7em;
+    }
+    .card-text {
+        font-size: 1.002rem !important;
+    }
+}
 </style>
 <script>
     // Enable Bootstrap tooltips for admin icons

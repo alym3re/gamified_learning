@@ -15,6 +15,7 @@ QUESTION_TYPE_CHOICES = [
     ('multiple_choice', 'Multiple Choice'),
     ('true_false', 'True/False'),
     ('identification', 'Identification'),
+    ('fill_in_the_blanks', 'Fill in the Blanks'),
 ]
 
 def quiz_thumbnail_path(instance, filename):
@@ -108,6 +109,21 @@ class Question(models.Model):
     
     def is_identification(self):
         return self.question_type == 'identification'
+    
+    def is_fill_in_the_blanks(self):
+        return self.question_type == 'fill_in_the_blanks'
+
+    def blanks_count(self):
+        """For fill-in-the-blanks, returns the number of correct answers/blanks."""
+        if not self.is_fill_in_the_blanks():
+            return 0
+        return self.answers.filter(is_correct=True).count()
+
+    def total_points(self):
+        """Total points for this question; for FIB: points * blanks, else points"""
+        if self.is_fill_in_the_blanks():
+            return self.points * self.blanks_count()
+        return self.points
 
 class Answer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='answers')
@@ -166,17 +182,28 @@ class QuizAttempt(models.Model):
             return "0 seconds"
 
     def calculate_score(self):
-        # Calculate total points possible and points earned
-        total_pts = sum(q.points for q in self.quiz.questions.all())
-        gained_pts = sum(
-            q.points for q in self.quiz.questions.all()
-            if self.user_answers.filter(question=q, is_correct=True).exists()
-        )
+        """
+        Calculate score with per-blank points for fill_in_the_blanks questions.
+        """
+        gained_pts = 0
+        total_pts = 0
         
-        # Calculate percentage score
-        self.score = (gained_pts / total_pts) * 100 if total_pts > 0 else 0
+        for q in self.quiz.questions.all():
+            if q.is_fill_in_the_blanks():
+                user_ans = self.user_answers.filter(question=q).first()
+                blanks_count = q.blanks_count()
+                per_blank_pts = q.points
+                correct_blanks = user_ans.partial_score if user_ans else 0
+                total_pts += per_blank_pts * blanks_count
+                gained_pts += per_blank_pts * correct_blanks
+            else:
+                total_pts += q.points
+                if self.user_answers.filter(question=q, is_correct=True).exists():
+                    gained_pts += q.points
+                    
         self.raw_points = gained_pts
         self.total_points = total_pts
+        self.score = (gained_pts / total_pts) * 100 if total_pts else 0
         self.passed = self.score >= self.quiz.passing_score
         self.save()
         return self.score
@@ -195,9 +222,10 @@ class UserAnswer(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='quiz_user_answers')
     # For multiple choice and true/false questions
     selected_answers = models.ManyToManyField(Answer, blank=True, related_name='quiz_user_selected_answers')
-    # For identification questions
+    # For identification and fill in the blanks
     text_answer = models.TextField(blank=True, null=True)
     is_correct = models.BooleanField(default=False)
+    partial_score = models.PositiveIntegerField(default=0, help_text="Number of correct blanks for fill-in-the-blanks questions")
 
     class Meta:
         unique_together = ('attempt', 'question')
@@ -211,6 +239,7 @@ class UserAnswer(models.Model):
             correct_answers = set(question.answers.filter(is_correct=True).values_list('id', flat=True))
             selected = set(self.selected_answers.values_list('id', flat=True))
             self.is_correct = correct_answers == selected
+            self.partial_score = 1 if self.is_correct else 0
                 
         elif question.is_identification():
             # For identification, check if text answer matches any correct answer
@@ -218,8 +247,25 @@ class UserAnswer(models.Model):
             if self.text_answer:
                 user_ans = self.text_answer.lower().strip()
                 self.is_correct = user_ans in correct_answers
+                self.partial_score = 1 if self.is_correct else 0
             else:
                 self.is_correct = False
+                self.partial_score = 0
+
+        elif question.is_fill_in_the_blanks():
+            correct_answers = [a.text.lower().strip() for a in question.answers.filter(is_correct=True)]
+            if self.text_answer:
+                user_blanks = [b.strip().lower() for b in self.text_answer.split('|')]
+                correct_count = 0
+                for idx, ca in enumerate(correct_answers):
+                    # For out of bounds, can't be matched
+                    if idx < len(user_blanks) and user_blanks[idx] == ca:
+                        correct_count += 1
+                self.partial_score = correct_count
+                self.is_correct = (correct_count == len(correct_answers))
+            else:
+                self.is_correct = False
+                self.partial_score = 0
                 
         self.save()
         return self.is_correct
