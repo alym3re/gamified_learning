@@ -45,7 +45,6 @@
                                     <th>Date Taken</th>
                                     <th>Score</th>
                                     <th>Result</th>
-                                    <th>Duration</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -73,9 +72,6 @@
                                         {% else %}
                                             <span class="badge bg-danger">Failed</span>
                                         {% endif %}
-                                    </td>
-                                    <td>
-                                        {{ attempt.duration_str }}
                                     </td>
                                     <td>
                                         <a href="{% url 'quizzes:quiz_results' attempt.id %}" class="btn btn-sm btn-theme-primary d-flex align-items-center gap-1">

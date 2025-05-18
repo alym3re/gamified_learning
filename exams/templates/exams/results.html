@@ -1,6 +1,7 @@
 
 {% extends 'base.html' %}
 {% load exams_extras %}
+{% load percentage_extras %}
 {% block title %}Exam Results - {{ exam.title }}{% endblock %}
 
 {% block content %}
@@ -8,33 +9,63 @@
     <div class="row">
         <div class="col-lg-8 mx-auto">
             <!-- Summary Card -->
-            <div class="quiz-card card grading-period-card border-0 shadow-sm mb-5">
-                <div class="card-header {% if attempt.passed %}bg-success text-white{% else %}bg-danger text-white{% endif %} pb-3 pt-4 px-4 border-0">
+            <div class="quiz-summary-card card border-0 shadow-lg mb-5 px-1 py-3" style="border-radius:18px;">
+                <div class="d-flex justify-content-end m-2">
+                    <span class="badge {% if attempt.passed %}bg-success{% else %}bg-danger{% endif %} fs-5 px-4 py-2" style="font-size:1.07rem;">
+                        {% if attempt.passed %}Passed{% else %}Failed{% endif %}
+                    </span>
+                </div>
+                <div class="card-header bg-transparent border-0 pb-0 px-4 pt-3">
                     <div class="d-flex align-items-center justify-content-between flex-wrap">
                         <h2 class="mb-0 fw-bold" style="font-size:2.1rem;">
-                            Exam Results: {{ exam.title }}
+                            <i class="bi bi-award me-2"></i>Exam Results: {{ exam.title }}
                         </h2>
-                        <div>
-                            <span class="badge {% if attempt.passed %}bg-success{% else %}bg-danger{% endif %} fs-5 ms-2">
-                                {% if attempt.passed %}Passed{% else %}Failed{% endif %}
-                            </span>
-                        </div>
                     </div>
                 </div>
-                <div class="card-body p-4">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <p class="mb-1 theme-muted"><strong>Date Taken:</strong>
-                                <span class="local-time" data-datetime="{{ attempt.start_time|date:"c" }}">
-                                    {{ attempt.start_time|date:"M d, Y H:i" }}
-                                </span>
-                            </p>
+                <div class="card-body p-4 pt-2">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-12">
+                            <div class="info-block mb-2 pb-2">
+                                <div class="mb-2 text-muted"><strong>Date Taken:</strong></div>
+                                <div>
+                                    <span class="local-time fs-5" data-datetime="{{ attempt.start_time|date:"c" }}">
+                                        {{ attempt.start_time|date:"M d, Y H:i" }}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <p class="mb-1 theme-muted"><strong>Your Score:</strong>
-                                <span class="fw-bold" style="font-size:1.45rem;">{{ attempt.score|floatformat:1 }}%</span>
-                            </p>
-                            <p class="mb-1 theme-muted"><strong>Passing Score:</strong> {{ exam.passing_score }}%</p>
+                        <div class="col-12 summary-details-section">
+                            <div class="row">
+                                <div class="col-6 stat-tile">
+                                    <div class="sm-label">Passing Score</div>
+                                    <div class="stat-value">
+                                        {% if attempt.total_points %}
+                                            {% widthratio exam.passing_score 100 attempt.total_points as passing_points %}
+                                            {{ passing_points|floatformat:0 }} / {{ attempt.total_points|floatformat:0 }}
+                                        {% else %}
+                                            N/A
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-6 stat-tile">
+                                    <div class="sm-label">Passing Score (%)</div>
+                                    <div class="stat-value">{{ exam.passing_score|smart_percent }}%</div>
+                                </div>
+                                <div class="col-6 stat-tile">
+                                    <div class="sm-label">Your Score</div>
+                                    <div class="stat-value">
+                                        {% if attempt.raw_points is not None and attempt.total_points %}
+                                            <span class="accent">{{ attempt.raw_points|floatformat:0 }}</span> / {{ attempt.total_points|floatformat:0 }}
+                                        {% else %}
+                                            <span class="accent">N/A</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-6 stat-tile">
+                                    <div class="sm-label">Your Score (%)</div>
+                                    <div class="stat-value accent">{{ attempt.score|smart_percent }}%</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -149,6 +180,52 @@
     </div>
 </div>
 <style>
+/* Quiz summary card styles */
+.quiz-summary-card {
+    border-radius: 18px;
+    box-shadow: 0 4px 30px rgba(86, 113, 156,.12), 0 2px 10px rgba(86, 113, 156,.06);
+    overflow: hidden;
+    transition: box-shadow 0.18s;
+    margin-bottom: 2.25rem;
+}
+.quiz-summary-card .card-header {
+    background: transparent !important;
+}
+.stat-tile {
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 0.5px 2.5px rgba(86,113,156,.07);
+    padding: 1rem 1.3rem 0.6rem 1.2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 130px;
+    margin-bottom: 1rem;
+}
+.stat-tile .sm-label {
+    color: #a98b6d;
+    font-size: 0.92rem;
+    margin-bottom: 0.15rem;
+    letter-spacing: 0.03em;
+}
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #7a2a3b;
+}
+.stat-value.accent {
+    color: #2e5168;
+}
+.summary-details-section {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+
+/* Quiz card styles */
 .quiz-card,
 .grading-period-card {
     border-radius: 14px;
@@ -172,6 +249,17 @@
     .quiz-card,
     .grading-period-card {
         margin-bottom: 2rem;
+    }
+    .quiz-summary-card .card-header {
+        padding: 1.2rem 1rem 0.6rem 1rem !important;
+    }
+    .quiz-summary-card {
+        margin-bottom: 1.1rem !important;
+    }
+    .stat-tile {
+        min-width: 100px !important;
+        padding: 0.75rem 0.7rem 0.55rem 0.7rem;
+        margin-bottom: 0.55rem !important;
     }
     h2 {
         font-size: 1.4rem !important;

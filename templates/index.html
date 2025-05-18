@@ -6,7 +6,6 @@
 
 {% block content %}
 <div class="hero-section d-flex flex-column align-items-center justify-content-center w-100 min-vh-100 px-3 position-relative bg-white">
-    <!-- Faint background illustration -->
     <img src="{% static 'images/oc_logo.jpg' %}"
          class="hero-bg-img position-absolute top-50 start-50 translate-middle"
          alt="OC Logo background"
@@ -49,7 +48,6 @@
 
 {% block css %}
 <style>
-/* Hero section polish */
 .hero-section {
     min-height: 100vh;
     background: var(--light-color, #fff);
@@ -98,7 +96,6 @@
     margin-bottom: 0;
 }
 
-/* Responsive Button Sizing and Group */
 .button-group-responsive {
     width: 100%;
     max-width: 400px;
@@ -144,7 +141,6 @@
     line-height: 1.1;
 }
 
-/* Buttons wrap in row even on small screens */
 @media (max-width: 480px) {
     .button-group-responsive {
         gap: 0.7rem;
@@ -163,7 +159,6 @@
     .hero-title2 { font-size: 1.04rem;}
 }
 
-/* Visual depth on hover/focus */
 .btn-responsive:hover, .btn-responsive:focus {
     box-shadow: 0 4px 24px rgba(118,39,48,0.13);
     transform: translateY(-2px) scale(1.045);
@@ -186,7 +181,6 @@
     }
 }
 
-/* Accessibility improvements for focus/hover states. */
 .btn-primary:focus, .btn-outline-primary:focus {
     box-shadow: 0 0 0 3px rgba(246,197,159, 0.45) !important;
     border-color: var(--accent-color, #f7c59f) !important;

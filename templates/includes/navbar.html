@@ -3,18 +3,14 @@
 <header>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top shadow-sm app-navbar-plus">
     <div class="container py-1">
-        <!-- Brand and logo -->
         <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'index' %}">
             <img src="{% static 'images/logo.png' %}" alt="Logo" width="38" height="38" class="d-inline-block align-top rounded bg-white shadow-sm">
             <span class="fw-bold fs-4" style="letter-spacing:0.5px;">GALA</span>
         </a>
-        <!-- Toggler -->
         <button class="navbar-toggler ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <!-- Navbar Content -->
         <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
-            <!-- Main nav links -->
             <ul class="navbar-nav mb-2 mb-lg-0 ms-lg-4 ms-auto gap-lg-2">
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'dashboard' %}">Dashboard</a>
@@ -34,7 +30,6 @@
                     <a class="nav-link" href="{% url 'exams:grading_period_exam_list' %}">Exams</a>
                 </li>
             </ul>
-            <!-- Profile Actions (to the right always) -->
             <div class="d-flex align-items-center ms-lg-4 gap-2 flex-nowrap mt-2 mt-lg-0">
                 {% if user.is_authenticated %}
                 <div class="dropdown d-flex align-items-center">

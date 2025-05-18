@@ -253,7 +253,7 @@
         {% endfor %}
         <div class="d-flex justify-content-between mb-3">
             <button type="submit" class="btn btn-primary btn-lg">Submit Quiz</button>
-            <a href="{% url 'quizzes:view_quiz' quiz.id %}" class="btn btn-secondary">Cancel</a>
+            <a href="{% url 'quizzes:quiz_list_by_period' quiz.grading_period %}" class="btn btn-secondary">Cancel</a>
         </div>
     </form>
 </div>

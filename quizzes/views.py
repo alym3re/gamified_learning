@@ -407,7 +407,7 @@ def take_quiz(request, quiz_id):
                         user_answer_obj.text_answer = answer_val
 
                 elif qtype == 'identification':
-                    answer_text = request.POST.get(f'question_{question.id}', '').strip()
+                    answer_text = request.POST.get(f'question_{question.id}_text', '').strip()
                     user_answer_obj.text_answer = answer_text
                     user_answer_obj.selected_answers.clear()
 
@@ -471,13 +471,33 @@ def quiz_results(request, attempt_id):
 
     # Select related so we can access user_answer.question easily in template
     user_answers = attempt.user_answers.select_related('question').all()
+    show_answers = attempt.quiz.show_correct_answers or attempt.passed or request.user.is_staff
+
+    # Build a submitted_blanks dict {question.id: [list of blank dicts]} for fill-in-the-blanks questions
+    submitted_blanks = {}
+    for ua in user_answers:
+        q = ua.question
+        if q.question_type == 'fill_in_the_blanks':
+            blanks = []
+            correct_answers = list(q.answers.filter(is_correct=True).values_list('text', flat=True))
+            user_blanks = [b.strip() for b in (ua.text_answer or '').split('|')]
+            for i, correct in enumerate(correct_answers):
+                user_answer = user_blanks[i] if i < len(user_blanks) else ''
+                is_correct = (user_answer.lower() == correct.lower())
+                blanks.append({
+                    'user_answer': user_answer or '[No Answer]',
+                    'correct': correct,
+                    'is_correct': is_correct,
+                })
+            submitted_blanks[q.id] = blanks
 
     return render(request, 'quizzes/results.html', {
         'attempt': attempt,
         'user_answers': user_answers,
-        'show_answers': attempt.quiz.show_correct_answers or attempt.passed or request.user.is_staff,
+        'show_answers': show_answers,
         'raw_points': attempt.raw_points,
-        'total_points': attempt.total_points
+        'total_points': attempt.total_points,
+        'submitted_blanks': submitted_blanks,  # For template to display each blank separately
     })
 
 

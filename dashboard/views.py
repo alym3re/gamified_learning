@@ -24,7 +24,6 @@ from django.conf import settings
 
 TEMPLATE_PATH = "media/templates/RANKING_TEMPLATE.docx"
 
-# --- DEFINE GRADING PERIODS ---
 GRADING_PERIODS = [
     ('prelim', 'Prelim'),
     ('midterm', 'Midterm'),
@@ -54,14 +53,12 @@ def student_dashboard(request):
     grading_periods = GRADING_PERIODS
     period_stats = {}
 
-    # -- Compute overall quiz and exam POINTS for the user (not percent) --
     quiz_points_qs = QuizAttempt.objects.filter(
         user=user,
         completed=True,
-        quiz__is_archived=False  # Exclude archived quizzes
+        quiz__is_archived=False 
     )
     exam_points_qs = ExamAttempt.objects.filter(user=user, completed=True)
-    # Use raw_points if present, otherwise fallback to score field
     total_quiz_points = quiz_points_qs.aggregate(
         s=Sum('raw_points')
     )['s']
@@ -74,7 +71,6 @@ def student_dashboard(request):
     if total_exam_points is None:
         total_exam_points = exam_points_qs.aggregate(s=Sum('score'))['s'] or 0
 
-    # -- Compute ranking by sum of total quiz and exam points for all users --
     from django.contrib.auth import get_user_model
     User = get_user_model()
     all_students = User.objects.filter(is_staff=False)
@@ -83,7 +79,7 @@ def student_dashboard(request):
         quiz_qs = QuizAttempt.objects.filter(
             user=student,
             completed=True,
-            quiz__is_archived=False  # Exclude archived quizzes
+            quiz__is_archived=False  
         )
         exam_qs = ExamAttempt.objects.filter(user=student, completed=True)
         stu_quiz_points = quiz_qs.aggregate(s=Sum('raw_points'))['s']
@@ -104,9 +100,7 @@ def student_dashboard(request):
             break
     total_students = all_students.count()
 
-    # -- Per-Period Stats (for grading period cards) --
     for period_value, period_label in grading_periods:
-        # Only consider active lessons in the period
         lessons_in_period = Lesson.objects.filter(grading_period=period_value, is_active=True)
         total_lessons = lessons_in_period.count()
         lessons_read_count = LessonProgress.objects.filter(
@@ -148,7 +142,7 @@ def student_dashboard(request):
                     'score_percent': score_percent,
                     'placer': placer,
                     'badge': badge,
-                    'raw_score': qa.score,  # actual score
+                    'raw_score': qa.score,  
                 })
 
         exam_result_list = []
@@ -181,7 +175,7 @@ def student_dashboard(request):
                     'placer': placer,
                     'status': status,
                     'badge': badge,
-                    'raw_score': ea.score,  # actual score
+                    'raw_score': ea.score,  
                 })
 
         period_stats[period_value] = {
@@ -194,8 +188,7 @@ def student_dashboard(request):
             'exam_result_list': exam_result_list
         }
 
-    # --- Organize Achievements into lesson, quiz, exam groups ---
-    # Lessons Achievements
+
     lessons_achievements = []
     lessons_read_period = {}
     for period_value, period_label in grading_periods:
@@ -229,7 +222,6 @@ def student_dashboard(request):
             'icon': 'bookshelf'
         })
 
-    # Quiz Achievements (perfect on each quiz)
     quiz_achievements = []
     user_quiz_attempts = QuizAttempt.objects.filter(
         user=user,
@@ -254,7 +246,6 @@ def student_dashboard(request):
                 'icon': 'check-circle'
             })
 
-    # Exam Achievements (perfect on each exam)
     exam_achievements = []
     user_exam_attempts = ExamAttempt.objects.filter(user=user, completed=True).select_related('exam')
     for ea in user_exam_attempts:
@@ -314,28 +305,23 @@ def admin_dashboard(request):
 
     recent_activities = ActivityLog.objects.all().order_by('-timestamp')[:10]
 
-    # --------- Build per-period stats and rankings ---------
     period_stats = {}
 
     for period_value, period_label in GRADING_PERIODS:
-        # Lessons count for the period
         total_lessons_in_period = Lesson.objects.filter(grading_period=period_value, is_active=True).count()
 
-        # All quizzes in this period (not archived)
         quizzes_in_period = Quiz.objects.filter(grading_period=period_value, is_archived=False)
         quizzes_list = [
             {'id': q.id, 'title': q.title}
             for q in quizzes_in_period
         ]
 
-        # All exams in this period
         exams_in_period = Exam.objects.filter(grading_period=period_value)
         exams_list = [
             {'id': e.id, 'title': e.title}
             for e in exams_in_period
         ]
 
-        # --- Rankings for quizzes (for each quiz: list of student rankings sorted by score) ---
         quiz_rankings = []
         for quiz in quizzes_in_period:
             attempts = (QuizAttempt.objects.filter(
@@ -343,19 +329,15 @@ def admin_dashboard(request):
                 .select_related('user')
                 .order_by('-score', 'user__username'))
 
-            # Filter by grading period if the field exists
             if has_grading_period_field(QuizAttempt):
                 attempts = attempts.filter(grading_period=period_value)
 
-            # Group by user and get highest score per user for each quiz
             student_best = {}
             for att in attempts:
                 stu_id = att.user.id
                 score = att.score
-                # For total_points & earned_points
                 earned_points = getattr(att, "raw_points", None)
                 total_points = getattr(att, "total_points", None)
-                # Fallback to score and max_score if not present
                 if total_points is None:
                     total_points = getattr(quiz, 'max_score', 100)
                 if earned_points is None:
@@ -389,7 +371,6 @@ def admin_dashboard(request):
                 'rankings': rankings_rows,
             })
 
-        # --- Rankings for exams (for each exam: list of student rankings sorted by score) ---
         exam_rankings = []
         for exam in exams_in_period:
             attempts = (ExamAttempt.objects.filter(
@@ -397,7 +378,6 @@ def admin_dashboard(request):
                 .select_related('user')
                 .order_by('-score', 'user__username'))
 
-            # Filter by grading period if the field exists
             if has_grading_period_field(ExamAttempt):
                 attempts = attempts.filter(grading_period=period_value)
 
@@ -449,14 +429,12 @@ def admin_dashboard(request):
             'exam_rankings': exam_rankings,
         }
 
-    # Get some overall stats for the dashboard
     from django.db.models import Max, Avg
     quiz_stats = QuizAttempt.objects.filter(completed=True).aggregate(
         avg_score=Avg('score'),
         high_score=Max('score')
     )
 
-    # Calculate exam pass rate in Python instead of using ORM division
     all_exam_attempts = ExamAttempt.objects.filter(completed=True)
     total_exam_attempts = all_exam_attempts.count()
     passing_exam_attempts = all_exam_attempts.filter(passed=True).count()
@@ -465,20 +443,18 @@ def admin_dashboard(request):
         avg_score=Avg('score')
     )
 
-    # Add pass rate as a float (percent)
     if total_exam_attempts > 0:
         exam_stats['pass_rate'] = passing_exam_attempts / total_exam_attempts
     else:
         exam_stats['pass_rate'] = 0
 
-    # --- OVERALL RANKING LOGIC ---
     all_students = User.objects.filter(is_staff=False)
     student_totals = []
     for student in all_students:
         quiz_qs = QuizAttempt.objects.filter(
             user=student,
             completed=True,
-            quiz__is_archived=False  # Exclude archived quizzes
+            quiz__is_archived=False 
         )
         exam_qs = ExamAttempt.objects.filter(user=student, completed=True)
         stu_quiz_points = quiz_qs.aggregate(s=Sum('raw_points'))['s']
@@ -528,41 +504,31 @@ def admin_dashboard(request):
 def download_rankings_docx(request, period_value=None):
     TEMPLATE_PATH = os.path.join(settings.BASE_DIR, 'media', 'templates', 'RANKING_TEMPLATE.docx')
 
-    """
-    Generate a ranking DOCX file, with improved table styles and the option to export
-    only desired tables (overall, quiz, or exam rankings) for selected grading periods.
-    The request can include 'tables[]' GET parameters: 'overall', 'quizzes', 'exams'.
-    """
+
     from django.contrib.auth import get_user_model
     User = get_user_model()
 
 
-    # --- Extract table selection (default all) ---
     tables_to_include = request.GET.getlist('tables[]')
     if not tables_to_include:
         tables_to_include = ['overall', 'quizzes', 'exams']
 
-    # Build per-period stats and rankings as before
     period_stats = {}
     for period_value_iter, period_label in GRADING_PERIODS:
-        # Lessons count for the period
         total_lessons_in_period = Lesson.objects.filter(grading_period=period_value_iter, is_active=True).count()
 
-        # All quizzes in this period (not archived)
         quizzes_in_period = Quiz.objects.filter(grading_period=period_value_iter, is_archived=False)
         quizzes_list = [
             {'id': q.id, 'title': q.title}
             for q in quizzes_in_period
         ]
 
-        # All exams in this period
         exams_in_period = Exam.objects.filter(grading_period=period_value_iter)
         exams_list = [
             {'id': e.id, 'title': e.title}
             for e in exams_in_period
         ]
 
-        # Quiz rankings (highest per user)
         quiz_rankings = []
         for quiz in quizzes_in_period:
             attempts = (QuizAttempt.objects.filter(
@@ -611,7 +577,6 @@ def download_rankings_docx(request, period_value=None):
                 'rankings': rankings_rows,
             })
 
-        # Exam rankings
         exam_rankings = []
         for exam in exams_in_period:
             attempts = (ExamAttempt.objects.filter(
@@ -669,7 +634,6 @@ def download_rankings_docx(request, period_value=None):
             'exam_rankings': exam_rankings,
         }
 
-    # --- OVERALL RANKING LOGIC ---
     all_students = User.objects.filter(is_staff=False)
     student_totals = []
     for student in all_students:
@@ -723,7 +687,6 @@ def download_rankings_docx(request, period_value=None):
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     def int_format(value):
-        # Always display as integers for DOCX output
         try:
             return str(int(round(float(value))))
         except Exception:
@@ -751,9 +714,8 @@ def download_rankings_docx(request, period_value=None):
     doc = Document(TEMPLATE_PATH)
     add_docx_heading(doc, 'OFFICIAL STUDENT RANKINGS', level=1)
     doc.add_paragraph(f"Generated on: {datetime.date.today().strftime('%B %d, %Y')}")
-    doc.add_paragraph()  # Add spacing
+    doc.add_paragraph()  
 
-    # 1. Overall Rankings Table
     if 'overall' in tables_to_include:
         add_docx_heading(doc, 'Overall Student Rankings', level=2)
         doc.add_paragraph('Based on cumulative quiz and exam points', style='Intense Quote' if 'Intense Quote' in [s.name for s in doc.styles] else None)
@@ -777,7 +739,6 @@ def download_rankings_docx(request, period_value=None):
         doc.add_page_break()
 
 
-    # 2. Quiz and Exam Rankings by Period
     periods_to_show = [(p_val, p_label) for p_val, p_label in GRADING_PERIODS
                       if period_value is None or p_val == period_value]
     for p_val, p_label in periods_to_show:
@@ -793,9 +754,7 @@ def download_rankings_docx(request, period_value=None):
             continue
 
         add_docx_heading(doc, f'{p_label} Period Rankings', level=1)
-        doc.add_paragraph()  # Add spacing
-
-        # Quiz Ranking tables for this period
+        doc.add_paragraph()  
         if 'quizzes' in tables_to_include and stats.get('quiz_rankings'):
             add_docx_heading(doc, 'Quiz Rankings', level=2)
             for quiz in stats['quiz_rankings']:
